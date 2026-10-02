@@ -1,0 +1,28 @@
+.{
+    .name = .dam2,
+    .version = "0.0.0",
+
+    .fingerprint = 0xc4915a351adf559c,
+    .minimum_zig_version = "0.16.0",
+    .dependencies = .{
+        .raylib_zig = .{
+            .url = "git+https://github.com/raylib-zig/raylib-zig#8758f4cd3a5ae0df6941c4715257223d34c5ad3e",
+            .hash = "raylib_zig-6.0.0-KE8RECZ8BQDm-txuospkpZHbJ6DNpacUF7D88RWQ_qAe",
+        },
+        .emsdk = .{
+            .url = "git+https://github.com/emscripten-core/emsdk?ref=4.0.9#3bcf1dcd01f040f370e10fe673a092d9ed79ebb5",
+            .hash = "N-V-__8AAJl1DwBezhYo_VE6f53mPVm00R-Fk28NPW7P14EQ",
+        },
+        .lua = .{
+            .url = "git+https://github.com/PegaFox/allyourcodebase-lua#9d12e6d06f80d90d5cb478b79fe086b9b1df042f",
+            .hash = "lua-5.4.7-zqrcysUiAACQA04jcT5JHRCbEGsI24cGqRbM_LPwDXWn",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "assets",
+        "src",
+        "README.md",
+    },
+}
