@@ -10,6 +10,7 @@ const RANKS = [_][:0]const u8{ "F", "D-", "D", "D+", "C-", "C", "C+", "B-", "B",
 const BG_COLOR: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
 const PLAY_SIZE: rl.Vector2 = .{ .x = 500, .y = 150 };
 const PRACTICE_SIZE: rl.Vector2 = .{ .x = 250, .y = 75 };
+const P2_SIZE = 200;
 const SHOP_WIDTH = 450;
 const UI_PAD = 50;
 
@@ -143,7 +144,7 @@ pub fn main(_: std.process.Init) !void {
     Board.board_texture = try rl.loadTexture("board.png");
     defer Board.board_texture.unload();
 
-    const board_width = (build_options.SCREEN_WIDTH - SHOP_WIDTH) / 2;
+    const board_width = (build_options.SCREEN_WIDTH - SHOP_WIDTH);
     const p1_bounds = rl.Rectangle{
         .x = 0,
         .y = 0,
@@ -151,10 +152,10 @@ pub fn main(_: std.process.Init) !void {
         .height = build_options.SCREEN_HEIGHT,
     };
     const p2_bounds = rl.Rectangle{
-        .x = board_width,
+        .x = 0,
         .y = 0,
-        .width = board_width,
-        .height = build_options.SCREEN_HEIGHT,
+        .width = P2_SIZE,
+        .height = P2_SIZE,
     };
 
     const shop_bounds = rl.Rectangle{
@@ -342,12 +343,31 @@ pub fn main(_: std.process.Init) !void {
                     y += 22;
                 },
                 .game => {
-                    // TODO: countdown visual
-
                     // draw game
                     p1_board.draw(done, p1_bounds);
                     p2_board.draw(done, p2_bounds);
                     shop.draw(&p1_board, shop_bounds);
+
+                    if (game_begin > 0) {
+                        const countdown_text = std.fmt.bufPrintSentinel(
+                            &fmt_buf,
+                            "{d}",
+                            .{
+                                @as(i32, @intFromFloat(@ceil(game_begin))),
+                            },
+                            0,
+                        ) catch unreachable;
+
+                        const text_width = rl.measureText(countdown_text, 200);
+
+                        rl.drawText(
+                            countdown_text,
+                            @divTrunc(build_options.SCREEN_WIDTH - text_width, 2),
+                            @divTrunc(build_options.SCREEN_HEIGHT - 200, 2),
+                            200,
+                            .white,
+                        );
+                    }
 
                     if (!debug_text) break :draw;
 
