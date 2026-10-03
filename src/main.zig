@@ -174,12 +174,15 @@ pub fn main(_: std.process.Init) !void {
         .text_size = PLAY_SIZE.y - 20,
     };
 
-    // const practice_bounds = rl.Rectangle{
-    //     .x = build_options.SCREEN_WIDTH - UI_PAD - PRACTICE_SIZE,
-    //     .y = build_options.SCREEN_HEIGHT - UI_PAD - PRACTICE_SIZE,
-    //     .width = PLAY_SIZE.x,
-    //     .height = PLAY_SIZE.y,
-    // };
+    var practice_button: Button = .{
+        .bounds = .{
+            .x = build_options.SCREEN_WIDTH - UI_PAD - PRACTICE_SIZE.x,
+            .y = build_options.SCREEN_HEIGHT - UI_PAD - PRACTICE_SIZE.y,
+            .width = PRACTICE_SIZE.x,
+            .height = PRACTICE_SIZE.y,
+        },
+        .text_size = PRACTICE_SIZE.y - 20,
+    };
 
     shop.init(shop_bounds);
 
@@ -212,14 +215,27 @@ pub fn main(_: std.process.Init) !void {
                     {
                         // Play button logic
                         play_button.update();
+                        practice_button.update();
+
                         if (play_button.isPressed()) {
                             playClick();
+                        }
+
+                        if (practice_button.isPressed()) {
+                            practice_mode = !practice_mode;
                         }
                     }
 
                     if (lobby_state == .ready or
                         lobby_state == .waiting)
                         wait_timer += dt;
+
+                    if (practice_mode) {
+                        if (lobby_state == .ready)
+                            lobby_state = .matched;
+                        if (lobby_state == .waiting)
+                            setState(.game);
+                    }
 
                     if (!debug_web) break :update;
 
@@ -274,7 +290,7 @@ pub fn main(_: std.process.Init) !void {
             switch (state) {
                 .lobby => {
                     // play button
-
+                    play_button.state.disabled = lobby_state == .waiting;
                     const play_text = switch (lobby_state) {
                         .lobby => "Ready",
                         .ready => "Cancel",
@@ -282,6 +298,9 @@ pub fn main(_: std.process.Init) !void {
                         .waiting => "Waiting",
                     };
                     play_button.draw(play_text);
+
+                    const practice_text = if (practice_mode) "Practice" else "PVP";
+                    practice_button.draw(practice_text);
 
                     if (!debug_text) break :draw;
 
@@ -323,10 +342,9 @@ pub fn main(_: std.process.Init) !void {
                     y += 22;
                 },
                 .game => {
+                    // TODO: countdown visual
+
                     // draw game
-
-                    if (game_begin > 0) {}
-
                     p1_board.draw(done, p1_bounds);
                     p2_board.draw(done, p2_bounds);
                     shop.draw(&p1_board, shop_bounds);
