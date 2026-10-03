@@ -4,17 +4,11 @@ const rl = @import("raylib");
 const build_options = @import("build_options");
 
 const Board = @import("Board.zig");
+const Button = @import("Button.zig");
 
 const SHOP_BG: rl.Color = .{ .r = 128, .g = 42, .b = 98, .a = 255 };
 const SHOP_TEXT: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
 const SHOP_PADDING: rl.Vector2 = .{ .x = 20, .y = 20 };
-
-pub const BUTTON_COLOR: rl.Color = .{ .r = 0, .g = 148, .b = 121, .a = 255 };
-pub const BUTTON_HOVER_COLOR: rl.Color = .{ .r = 9, .g = 219, .b = 47, .a = 255 };
-pub const BUTTON_CLICK_COLOR: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
-pub const BUTTON_DISABLED_COLOR: rl.Color = .{ .r = 255, .g = 0, .b = 0, .a = 255 };
-
-pub const BUTTON_TEXT_COLOR: rl.Color = .{ .r = 0, .g = 55, .b = 110, .a = 255 };
 
 const TITLE_FONT_SIZE = 44;
 const MONEY_FONT_SIZE = 22;
@@ -32,12 +26,6 @@ const UpgradeInfo = struct {
 
     base_cost: f32,
     mult: f32,
-};
-const UpgradeFields = packed struct(u8) {
-    focused: bool = false,
-    click: bool = false,
-    disabled: bool = true,
-    padding: u5 = undefined,
 };
 
 const UPGRADE_DATA: std.enums.EnumArray(Upgrade, UpgradeInfo) = .init(.{
@@ -80,61 +68,60 @@ const UPGRADE_DATA: std.enums.EnumArray(Upgrade, UpgradeInfo) = .init(.{
 
 const Shop = @This();
 
-upgrade_fields: std.enums.EnumArray(Upgrade, UpgradeFields) = .initFill(.{}),
+upgrade_buttons: std.enums.EnumArray(Upgrade, Button) = .initFill(.{
+    .text_size = 0,
+    .bounds = undefined,
+}),
+
+pub fn init(self: *Shop, bounds: rl.Rectangle) void {
+    var pos: rl.Vector2 = .{
+        .x = bounds.x + SHOP_PADDING.x,
+        .y = bounds.y + SHOP_PADDING.y,
+    };
+    pos.y += TITLE_FONT_SIZE; // SHOP TITLE
+    pos.y += MONEY_FONT_SIZE; // MONEY TEXT
+    pos.y += UPGRADE_PADDING; // PAD
+
+    for (std.enums.values(Upgrade)) |upgrade| {
+        pos.y += UPGRADE_PADDING;
+
+        const button = self.upgrade_buttons.getPtr(upgrade);
+        const info = UPGRADE_DATA.getPtrConst(upgrade);
+
+        const total_lines: f32 = @floatFromInt(std.mem.count(u8, info.desc, "\n") + 1);
+        const total_height: f32 = UPGRADE_PADDING + UPGRADE_FONT_SIZE + UPGRADE_DESC_FONT_SIZE * total_lines + UPGRADE_PADDING;
+
+        button.bounds = .{
+            .x = pos.x,
+            .y = pos.y,
+            .width = bounds.width - SHOP_PADDING.x * 2,
+            .height = total_height,
+        };
+        button.state.disabled = true;
+
+        pos.y += total_height;
+    }
+}
 
 pub fn update(self: *Shop, board: *Board, bounds: rl.Rectangle, dt: f32) void {
+    _ = bounds;
+
     switch (board.player) {
         .user => {
-            var pos: rl.Vector2 = .{
-                .x = bounds.x + SHOP_PADDING.x,
-                .y = bounds.y + SHOP_PADDING.y,
-            };
-            pos.y += TITLE_FONT_SIZE; // SHOP TITLE
-            pos.y += MONEY_FONT_SIZE; // MONEY TEXT
-            pos.y += UPGRADE_PADDING; // PAD
-
-            const mouse_pos = rl.getMousePosition();
             for (std.enums.values(Upgrade)) |upgrade| {
-                const info = UPGRADE_DATA.getPtrConst(upgrade);
-                const fields = self.upgrade_fields.getPtr(upgrade);
-
-                pos.y += UPGRADE_PADDING;
-
-                const total_lines: f32 = @floatFromInt(std.mem.count(u8, info.desc, "\n") + 1);
-                const total_height: f32 = UPGRADE_PADDING + UPGRADE_FONT_SIZE + UPGRADE_DESC_FONT_SIZE * total_lines + UPGRADE_PADDING;
-
-                fields.focused = rl.checkCollisionPointRec(mouse_pos, .{
-                    .x = pos.x - SHOP_PADDING.x,
-                    .y = pos.y,
-                    .width = bounds.width,
-                    .height = total_height + UPGRADE_PADDING,
-                });
-
-                pos.y += total_height;
-
                 const cost = upgradeCost(board, upgrade);
 
-                fields.disabled = cost > board.money;
+                const button = self.upgrade_buttons.getPtr(upgrade);
 
-                if (fields.disabled) {
-                    fields.focused = false;
-                    fields.click = false;
+                button.state.disabled = cost > board.money;
 
-                    continue;
+                button.update();
+
+                if (button.isPressed()) {
+                    board.buyUpgrade(upgrade);
+                    board.money -= @intCast(cost);
+                    board.upgrade_counts.getPtr(upgrade).* += 1;
                 }
-
-                if (rl.isMouseButtonReleased(.left)) {
-                    if (fields.focused and fields.click) {
-                        board.buyUpgrade(upgrade);
-                        board.money -= @intCast(cost);
-                        board.upgrade_counts.getPtr(upgrade).* += 1;
-                    }
-
-                    fields.click = false;
-                }
-
-                if (fields.focused and rl.isMouseButtonPressed(.left))
-                    fields.click = true;
             }
         },
         .ai => |ai| {
@@ -200,24 +187,11 @@ pub fn draw(self: *const Shop, board: *const Board, bounds: rl.Rectangle) void {
         pos.y += UPGRADE_PADDING;
 
         const info = UPGRADE_DATA.getPtrConst(upgrade);
-        const fields = self.upgrade_fields.getPtrConst(upgrade);
+        const button = self.upgrade_buttons.getPtrConst(upgrade);
 
         const total_lines: f32 = @floatFromInt(std.mem.count(u8, info.desc, "\n") + 1);
-        const total_height: f32 = UPGRADE_PADDING + UPGRADE_FONT_SIZE + UPGRADE_DESC_FONT_SIZE * total_lines + UPGRADE_PADDING;
 
-        rl.drawRectangleRounded(.{
-            .x = pos.x,
-            .y = pos.y,
-            .width = bounds.width - SHOP_PADDING.x * 2,
-            .height = total_height,
-        }, 0.2, 10, if (fields.disabled)
-            BUTTON_DISABLED_COLOR
-        else if (fields.click)
-            BUTTON_CLICK_COLOR
-        else if (fields.focused)
-            BUTTON_HOVER_COLOR
-        else
-            BUTTON_COLOR);
+        button.draw("");
 
         pos.y += UPGRADE_PADDING;
 
@@ -234,7 +208,7 @@ pub fn draw(self: *const Shop, board: *const Board, bounds: rl.Rectangle) void {
             @intFromFloat(bounds.x + bounds.width - SHOP_PADDING.x - width),
             @intFromFloat(pos.y),
             UPGRADE_COUNT_FONT_SIZE,
-            BUTTON_TEXT_COLOR,
+            Button.TEXT_COLOR,
         );
 
         rl.drawText(
@@ -242,7 +216,7 @@ pub fn draw(self: *const Shop, board: *const Board, bounds: rl.Rectangle) void {
             @intFromFloat(pos.x + UPGRADE_PADDING),
             @intFromFloat(pos.y),
             UPGRADE_FONT_SIZE,
-            BUTTON_TEXT_COLOR,
+            Button.TEXT_COLOR,
         );
         pos.y += UPGRADE_FONT_SIZE;
         rl.drawText(
@@ -250,7 +224,7 @@ pub fn draw(self: *const Shop, board: *const Board, bounds: rl.Rectangle) void {
             @intFromFloat(pos.x + UPGRADE_PADDING),
             @intFromFloat(pos.y),
             UPGRADE_DESC_FONT_SIZE,
-            BUTTON_TEXT_COLOR,
+            Button.TEXT_COLOR,
         );
         pos.y += UPGRADE_DESC_FONT_SIZE * total_lines;
 

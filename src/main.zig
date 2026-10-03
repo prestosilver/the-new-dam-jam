@@ -2,14 +2,16 @@ const std = @import("std");
 const rl = @import("raylib");
 const build_options = @import("build_options");
 
+const Button = @import("Button.zig");
 const Board = @import("Board.zig");
 const Shop = @import("Shop.zig");
 
 const RANKS = [_][:0]const u8{ "F", "D-", "D", "D+", "C-", "C", "C+", "B-", "B", "B+", "A-", "A", "A+", "A++", "S-", "S", "S+", "SS", "SS+", "SSS+" };
 const BG_COLOR: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
 const PLAY_SIZE: rl.Vector2 = .{ .x = 500, .y = 150 };
+const PRACTICE_SIZE: rl.Vector2 = .{ .x = 250, .y = 75 };
 const SHOP_WIDTH = 450;
-const BOTTOM_PAD = 50;
+const UI_PAD = 50;
 
 fn customLogFn(
     comptime level: std.log.Level,
@@ -36,6 +38,9 @@ const std_options: std.Options = .{
 const State = enum { lobby, game, end };
 var state: State = undefined;
 
+const debug_text: bool = @import("builtin").mode == .Debug;
+const debug_web: bool = @import("builtin").mode == .Debug;
+
 /// This is the percent progress of the current state transition
 var transition_timer: f64 = 0.0;
 
@@ -48,16 +53,10 @@ var p2_board: Board = .{};
 var shop: Shop = .{};
 var mms: u32 = 0;
 var render_mms: f32 = 0;
-var bot_timer: f32 = 0.0;
+var wait_timer: f32 = 0.0;
 var game_begin: f32 = 3.0;
 
-/// The play buttons state
-var play: packed struct(u8) {
-    focused: bool = false,
-    click: bool = false,
-    disabled: bool = false,
-    padding: u5 = undefined,
-} = .{};
+var practice_mode: bool = false;
 
 var fmt_buf: [64]u8 = undefined;
 var fmt_buf_two: [64]u8 = undefined;
@@ -101,27 +100,26 @@ fn playClick() void {
     switch (lobby_state) {
         .lobby => {
             lobby_state = .ready;
+            wait_timer = 0.0;
+
             // queue match
-            if (@import("builtin").mode == .Debug) {
-                bot_timer = 0.0;
-            } else {
-                @panic("TODO: send match join");
+            if (!debug_web) {
+                std.log.warn("TODO: send match join", .{});
             }
         },
         .ready => {
             lobby_state = .lobby;
             // cancel match
-            if (@import("builtin").mode != .Debug) {
-                @panic("TODO: send match leave");
+            if (!debug_web) {
+                std.log.warn("TODO: send match cancel", .{});
             }
         },
         .matched => {
             lobby_state = .waiting;
+            wait_timer = 0.0;
 
-            if (@import("builtin").mode == .Debug) {
-                bot_timer = 0.0;
-            } else {
-                @panic("TODO: send match start");
+            if (!debug_web) {
+                std.log.warn("TODO: send match begin", .{});
             }
         },
         .waiting => {},
@@ -166,12 +164,24 @@ pub fn main(_: std.process.Init) !void {
         .height = build_options.SCREEN_HEIGHT,
     };
 
-    const play_bounds = rl.Rectangle{
-        .x = (build_options.SCREEN_WIDTH - PLAY_SIZE.x) * 0.5,
-        .y = build_options.SCREEN_HEIGHT - PLAY_SIZE.y - BOTTOM_PAD,
-        .width = PLAY_SIZE.x,
-        .height = PLAY_SIZE.y,
+    var play_button: Button = .{
+        .bounds = .{
+            .x = (build_options.SCREEN_WIDTH - PLAY_SIZE.x) * 0.5,
+            .y = build_options.SCREEN_HEIGHT - PLAY_SIZE.y - UI_PAD,
+            .width = PLAY_SIZE.x,
+            .height = PLAY_SIZE.y,
+        },
+        .text_size = PLAY_SIZE.y - 20,
     };
+
+    // const practice_bounds = rl.Rectangle{
+    //     .x = build_options.SCREEN_WIDTH - UI_PAD - PRACTICE_SIZE,
+    //     .y = build_options.SCREEN_HEIGHT - UI_PAD - PRACTICE_SIZE,
+    //     .width = PLAY_SIZE.x,
+    //     .height = PLAY_SIZE.y,
+    // };
+
+    shop.init(shop_bounds);
 
     while (!rl.windowShouldClose()) {
         const dt = rl.getFrameTime();
@@ -182,8 +192,6 @@ pub fn main(_: std.process.Init) !void {
             p2_board.thrown_darts == Board.MAX_DARTS;
 
         update: {
-            const mouse_pos = rl.getMousePosition();
-
             // update state
             switch (state) {
                 .lobby => {
@@ -203,31 +211,25 @@ pub fn main(_: std.process.Init) !void {
 
                     {
                         // Play button logic
-                        play.focused = rl.checkCollisionPointRec(mouse_pos, play_bounds);
-
-                        if (rl.isMouseButtonReleased(.left)) {
-                            if (play.focused and play.click) {
-                                playClick();
-                            }
-
-                            play.click = false;
+                        play_button.update();
+                        if (play_button.isPressed()) {
+                            playClick();
                         }
-
-                        if (play.focused and rl.isMouseButtonPressed(.left))
-                            play.click = true;
                     }
 
-                    if (@import("builtin").mode != .Debug) break :update;
+                    if (lobby_state == .ready or
+                        lobby_state == .waiting)
+                        wait_timer += dt;
+
+                    if (!debug_web) break :update;
 
                     // debug update
                     if (lobby_state == .ready) {
-                        bot_timer += dt;
-                        if (bot_timer > 3.0) {
+                        if (rl.isKeyPressed(.b)) {
                             lobby_state = .matched;
                         }
                     } else if (lobby_state == .waiting) {
-                        bot_timer += dt;
-                        if (bot_timer > 2.0) {
+                        if (rl.isKeyPressed(.b)) {
                             setState(.game);
                         }
                     }
@@ -259,7 +261,7 @@ pub fn main(_: std.process.Init) !void {
             rl.clearBackground(BG_COLOR);
 
             var y: i32 = 0;
-            defer if (@import("builtin").mode == .Debug) {
+            defer if (debug_text) {
                 const state_text = std.fmt.bufPrintSentinel(
                     &fmt_buf,
                     "state v: {s} f: {}",
@@ -272,14 +274,6 @@ pub fn main(_: std.process.Init) !void {
             switch (state) {
                 .lobby => {
                     // play button
-                    rl.drawRectangleRounded(play_bounds, 0.2, 10, if (play.disabled)
-                        Shop.BUTTON_DISABLED_COLOR
-                    else if (play.click)
-                        Shop.BUTTON_CLICK_COLOR
-                    else if (play.focused)
-                        Shop.BUTTON_HOVER_COLOR
-                    else
-                        Shop.BUTTON_COLOR);
 
                     const play_text = switch (lobby_state) {
                         .lobby => "Ready",
@@ -287,21 +281,9 @@ pub fn main(_: std.process.Init) !void {
                         .matched => "Begin",
                         .waiting => "Waiting",
                     };
+                    play_button.draw(play_text);
 
-                    const play_text_width: f32 = @floatFromInt(rl.measureText(
-                        play_text,
-                        play_bounds.height - 20,
-                    ));
-
-                    rl.drawText(
-                        play_text,
-                        @intFromFloat(play_bounds.x + @divFloor(play_bounds.width - play_text_width, 2)),
-                        play_bounds.y + 10,
-                        play_bounds.height - 20,
-                        Shop.BUTTON_TEXT_COLOR,
-                    );
-
-                    if (@import("builtin").mode != .Debug) break :draw;
+                    if (!debug_text) break :draw;
 
                     // Debug draw
                     const visible_mms: u64 = @intFromFloat(render_mms);
@@ -323,8 +305,8 @@ pub fn main(_: std.process.Init) !void {
 
                     const lobby_state_text = std.fmt.bufPrintSentinel(
                         &fmt_buf,
-                        "lobby s: {s} t: {d}",
-                        .{ @tagName(lobby_state), @as(i32, @intFromFloat(bot_timer)) },
+                        "lobby s: {s} w: {d}",
+                        .{ @tagName(lobby_state), @as(i32, @intFromFloat(wait_timer)) },
                         0,
                     ) catch unreachable;
                     rl.drawText(lobby_state_text, 0, y, 22, .white);
@@ -349,7 +331,7 @@ pub fn main(_: std.process.Init) !void {
                     p2_board.draw(done, p2_bounds);
                     shop.draw(&p1_board, shop_bounds);
 
-                    if (@import("builtin").mode != .Debug) break :draw;
+                    if (!debug_text) break :draw;
 
                     // debug
                     y += 100;
