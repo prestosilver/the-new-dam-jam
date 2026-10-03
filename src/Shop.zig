@@ -9,12 +9,12 @@ const SHOP_BG: rl.Color = .{ .r = 128, .g = 42, .b = 98, .a = 255 };
 const SHOP_TEXT: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
 const SHOP_PADDING: rl.Vector2 = .{ .x = 20, .y = 20 };
 
-const BUTTON_COLOR: rl.Color = .{ .r = 0, .g = 148, .b = 121, .a = 255 };
-const BUTTON_HOVER_COLOR: rl.Color = .{ .r = 9, .g = 219, .b = 47, .a = 255 };
-const BUTTON_CLICK_COLOR: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
-const BUTTON_DISABLED_COLOR: rl.Color = .{ .r = 255, .g = 0, .b = 0, .a = 255 };
+pub const BUTTON_COLOR: rl.Color = .{ .r = 0, .g = 148, .b = 121, .a = 255 };
+pub const BUTTON_HOVER_COLOR: rl.Color = .{ .r = 9, .g = 219, .b = 47, .a = 255 };
+pub const BUTTON_CLICK_COLOR: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
+pub const BUTTON_DISABLED_COLOR: rl.Color = .{ .r = 255, .g = 0, .b = 0, .a = 255 };
 
-const BUTTON_TEXT_COLOR: rl.Color = .{ .r = 0, .g = 55, .b = 110, .a = 255 };
+pub const BUTTON_TEXT_COLOR: rl.Color = .{ .r = 0, .g = 55, .b = 110, .a = 255 };
 
 const TITLE_FONT_SIZE = 44;
 const MONEY_FONT_SIZE = 22;
@@ -127,7 +127,6 @@ pub fn update(self: *Shop, board: *Board, bounds: rl.Rectangle, dt: f32) void {
 
                 if (rl.isMouseButtonReleased(.left)) {
                     if (fields.focused and fields.click) {
-                        std.log.info("Player buy {s}", .{info.name});
                         board.buyUpgrade(upgrade);
                         board.money -= @intCast(cost);
                         board.upgrade_counts.getPtr(upgrade).* += 1;
