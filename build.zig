@@ -1,7 +1,7 @@
 const std = @import("std");
 const rlz = @import("raylib_zig");
 
-const GAME_NAME = "Darts a million";
+const GAME_NAME = "Darts 2 million";
 
 const SCREEN_WIDTH = 1200;
 const SCREEN_HEIGHT = 675;
