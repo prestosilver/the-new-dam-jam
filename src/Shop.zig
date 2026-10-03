@@ -86,10 +86,8 @@ pub fn init(self: *Shop, bounds: rl.Rectangle) void {
         pos.y += UPGRADE_PADDING;
 
         const button = self.upgrade_buttons.getPtr(upgrade);
-        const info = UPGRADE_DATA.getPtrConst(upgrade);
 
-        const total_lines: f32 = @floatFromInt(std.mem.count(u8, info.desc, "\n") + 1);
-        const total_height: f32 = UPGRADE_PADDING + UPGRADE_FONT_SIZE + UPGRADE_DESC_FONT_SIZE * total_lines + UPGRADE_PADDING;
+        const total_height: f32 = UPGRADE_PADDING + UPGRADE_FONT_SIZE + UPGRADE_DESC_FONT_SIZE * 2 + UPGRADE_PADDING;
 
         button.bounds = .{
             .x = pos.x,
@@ -103,7 +101,7 @@ pub fn init(self: *Shop, bounds: rl.Rectangle) void {
     }
 }
 
-pub fn update(self: *Shop, board: *Board, bounds: rl.Rectangle, dt: f32) void {
+pub fn update(self: *Shop, done: bool, board: *Board, bounds: rl.Rectangle, dt: f32) void {
     _ = bounds;
 
     switch (board.player) {
@@ -113,7 +111,7 @@ pub fn update(self: *Shop, board: *Board, bounds: rl.Rectangle, dt: f32) void {
 
                 const button = self.upgrade_buttons.getPtr(upgrade);
 
-                button.state.disabled = cost > board.money;
+                button.state.disabled = done or cost > board.money;
 
                 button.update();
 
@@ -189,8 +187,6 @@ pub fn draw(self: *const Shop, board: *const Board, bounds: rl.Rectangle) void {
         const info = UPGRADE_DATA.getPtrConst(upgrade);
         const button = self.upgrade_buttons.getPtrConst(upgrade);
 
-        const total_lines: f32 = @floatFromInt(std.mem.count(u8, info.desc, "\n") + 1);
-
         button.draw("");
 
         pos.y += UPGRADE_PADDING;
@@ -226,7 +222,7 @@ pub fn draw(self: *const Shop, board: *const Board, bounds: rl.Rectangle) void {
             UPGRADE_DESC_FONT_SIZE,
             Button.TEXT_COLOR,
         );
-        pos.y += UPGRADE_DESC_FONT_SIZE * total_lines;
+        pos.y += UPGRADE_DESC_FONT_SIZE * 2;
 
         pos.y += UPGRADE_PADDING;
     }

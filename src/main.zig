@@ -296,10 +296,8 @@ pub fn main(_: std.process.Init) !void {
                     p1_board.update(done, p1_bounds, dt);
                     p2_board.update(done, p2_bounds, dt);
 
-                    if (!done) {
-                        shop.update(&p1_board, shop_bounds, dt);
-                        shop.update(&p2_board, shop_bounds, dt);
-                    }
+                    shop.update(done, &p1_board, shop_bounds, dt);
+                    shop.update(done, &p2_board, shop_bounds, dt);
                 },
                 .end => {},
             }
@@ -326,6 +324,7 @@ pub fn main(_: std.process.Init) !void {
             switch (state) {
                 .lobby => {
                     // play button
+                    practice_button.state.disabled = lobby_state != .lobby;
                     play_button.state.disabled = lobby_state == .waiting;
                     const play_text = switch (lobby_state) {
                         .lobby => "Ready",
