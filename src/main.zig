@@ -6,13 +6,16 @@ const Button = @import("Button.zig");
 const Board = @import("Board.zig");
 const Shop = @import("Shop.zig");
 
+const emasm = @import("emasm.zig");
+
 const RANKS = [_][:0]const u8{ "F", "D-", "D", "D+", "C-", "C", "C+", "B-", "B", "B+", "A-", "A", "A+", "A++", "S-", "S", "S+", "SS", "SS+", "SSS+" };
 const BG_COLOR: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
 const PLAY_SIZE: rl.Vector2 = .{ .x = 500, .y = 150 };
 const PRACTICE_SIZE: rl.Vector2 = .{ .x = 250, .y = 75 };
-const P2_SIZE = 200;
+const P2_SIZE = 150;
 const SHOP_WIDTH = 450;
 const UI_PAD = 50;
+const POLL_INTERVAL = 0.2;
 
 fn customLogFn(
     comptime level: std.log.Level,
@@ -55,6 +58,7 @@ var shop: Shop = .{};
 var mms: u32 = 0;
 var render_mms: f32 = 0;
 var wait_timer: f32 = 0.0;
+var poll_timer: f32 = 0.0;
 var game_begin: f32 = 3.0;
 
 var practice_mode: bool = false;
@@ -70,11 +74,21 @@ fn setState(new_state: State) void {
         .game => {
             game_begin = 3.0;
 
-            p1_board = .{ .player = .user };
-            p2_board = .{ .player = .{ .ai = .{
-                .darts_per_second = 10,
-                .upgrade_rate = 1,
-            } } };
+            p1_board = .{ .player = .user, .font_size = 66 };
+            if (practice_mode) {
+                p2_board = .{
+                    .player = .{ .ai = .{
+                        .darts_per_second = 10,
+                        .upgrade_rate = 1,
+                    } },
+                    .font_size = 25,
+                };
+            } else {
+                p2_board = .{
+                    .player = .web,
+                    .font_size = 25,
+                };
+            }
         },
         .end => {},
     }
@@ -105,14 +119,14 @@ fn playClick() void {
 
             // queue match
             if (!debug_web) {
-                std.log.warn("TODO: send match join", .{});
+                emasm.EM_ASM("join_match()", .{});
             }
         },
         .ready => {
             lobby_state = .lobby;
             // cancel match
             if (!debug_web) {
-                std.log.warn("TODO: send match cancel", .{});
+                emasm.EM_ASM("cancel_match()", .{});
             }
         },
         .matched => {
@@ -120,7 +134,7 @@ fn playClick() void {
             wait_timer = 0.0;
 
             if (!debug_web) {
-                std.log.warn("TODO: send match begin", .{});
+                emasm.EM_ASM("ready_match()", .{});
             }
         },
         .waiting => {},
@@ -143,6 +157,9 @@ pub fn main(_: std.process.Init) !void {
 
     Board.board_texture = try rl.loadTexture("board.png");
     defer Board.board_texture.unload();
+
+    Board.background_texture = try rl.loadTexture("background.png");
+    defer Board.background_texture.unload();
 
     const board_width = (build_options.SCREEN_WIDTH - SHOP_WIDTH);
     const p1_bounds = rl.Rectangle{
@@ -229,7 +246,22 @@ pub fn main(_: std.process.Init) !void {
 
                     if (lobby_state == .ready or
                         lobby_state == .waiting)
+                    {
                         wait_timer += dt;
+                        poll_timer += dt;
+
+                        if (poll_timer > POLL_INTERVAL) {
+                            if (lobby_state == .ready and
+                                emasm.EM_ASM_INT("return poll_match();", .{}) == 1)
+                                lobby_state = .matched;
+
+                            if (lobby_state == .waiting and
+                                emasm.EM_ASM_INT("return poll_ready();", .{}) == 1)
+                                setState(.game);
+
+                            poll_timer = 0.0;
+                        }
+                    }
 
                     if (practice_mode) {
                         if (lobby_state == .ready)

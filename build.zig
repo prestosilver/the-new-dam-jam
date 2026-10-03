@@ -4,7 +4,7 @@ const rlz = @import("raylib_zig");
 const GAME_NAME = "Darts 2' million";
 
 const SCREEN_WIDTH = 1200;
-const SCREEN_HEIGHT = 675;
+const SCREEN_HEIGHT = 750;
 
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
@@ -55,7 +55,7 @@ pub fn build(b: *std.Build) !void {
             .flags = emcc_flags,
             .settings = emcc_settings,
             .install_dir = install_dir,
-            .shell_file_path = b.path("src/shell.html"),
+            .shell_file_path = b.path("src/shell/index.html"),
             .embed_paths = &.{
                 .{ .src_path = "assets/board.png", .virtual_path = "board.png" },
                 .{ .src_path = "assets/dart.png", .virtual_path = "dart.png" },
@@ -68,6 +68,9 @@ pub fn build(b: *std.Build) !void {
             },
         });
         b.getInstallStep().dependOn(emcc_step);
+
+        const client_js_step = b.addInstallFile(b.path("src/shell/client.js"), "web/client.js");
+        emcc_step.dependOn(&client_js_step.step);
 
         const html_filename = try std.fmt.allocPrint(b.allocator, "index.html", .{});
         const emrun_step = emsdk.emrunStep(

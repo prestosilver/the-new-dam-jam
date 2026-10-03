@@ -21,9 +21,8 @@ const OUTER_DOUBLE_RING = 0.75;
 const INNER_TRIPLE_RING = 0.44;
 const OUTER_TRIPLE_RING = 0.47;
 
-const DARTS_FONT_SIZE = 66;
-
 pub var board_texture: rl.Texture = undefined;
+pub var background_texture: rl.Texture = undefined;
 
 const Player = union(enum) {
     ai: struct {
@@ -36,6 +35,7 @@ const Player = union(enum) {
 };
 
 score: u32 = 301,
+font_size: f32 = 66,
 
 player: Player = .user,
 first_dart: usize = 0,
@@ -94,7 +94,7 @@ pub fn update(self: *Board, done: bool, bounds: rl.Rectangle, dt: f32) void {
         }
 
         while (self.first_dart < self.thrown_darts and
-            (self.dart_positions[self.first_dart].y > build_options.SCREEN_HEIGHT or
+            (self.dart_positions[self.first_dart].y > (bounds.y + bounds.height) or
                 self.dart_fades[self.first_dart] < 0))
         {
             self.first_dart += 1;
@@ -185,6 +185,17 @@ pub fn update(self: *Board, done: bool, bounds: rl.Rectangle, dt: f32) void {
 }
 
 pub fn draw(self: *const Board, done: bool, bounds: rl.Rectangle) void {
+    rl.beginScissorMode(
+        @intFromFloat(bounds.x),
+        @intFromFloat(bounds.y),
+        @intFromFloat(bounds.width),
+        @intFromFloat(bounds.height),
+    );
+    defer {
+        rl.drawRectangleLinesEx(bounds, 1, .white);
+        rl.endScissorMode();
+    }
+
     var fmt_buf: [64]u8 = undefined;
 
     const center = rl.Vector2{
@@ -224,7 +235,7 @@ pub fn draw(self: *const Board, done: bool, bounds: rl.Rectangle) void {
         .x = bounds.x,
         .y = bounds.y,
         .width = bounds.width,
-        .height = DARTS_FONT_SIZE,
+        .height = self.font_size,
     }, .alpha(.black, 0.5));
 
     const darts_text = std.fmt.bufPrintSentinel(
@@ -236,14 +247,14 @@ pub fn draw(self: *const Board, done: bool, bounds: rl.Rectangle) void {
 
     const size: f32 = @floatFromInt(rl.measureText(
         darts_text,
-        DARTS_FONT_SIZE,
+        @intFromFloat(self.font_size),
     ));
 
     rl.drawText(
         if (done) (if (self.thrown_darts == MAX_DARTS) "Winner" else "Loser") else darts_text,
         @intFromFloat(center.x - size / 2),
         @intFromFloat(bounds.y),
-        DARTS_FONT_SIZE,
+        @intFromFloat(self.font_size),
         .white,
     );
 }
