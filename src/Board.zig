@@ -23,13 +23,13 @@ const OUTER_TRIPLE_RING = 0.47;
 
 const DARTS_FONT_SIZE = 66;
 
-const AI_DPS = 10.0;
-
 pub var board_texture: rl.Texture = undefined;
 
 const Player = union(enum) {
     ai: struct {
         throw_countdown: f32 = 0,
+        darts_per_second: f32,
+        upgrade_rate: i32,
     },
     user,
     web,
@@ -37,7 +37,7 @@ const Player = union(enum) {
 
 score: u32 = 301,
 
-player: Player = .{ .ai = .{} },
+player: Player = .user,
 first_dart: usize = 0,
 thrown_darts: usize = 0,
 money: u32 = 0,
@@ -155,7 +155,7 @@ pub fn update(self: *Board, done: bool, bounds: rl.Rectangle, dt: f32) void {
 
     switch (self.player) {
         .ai => |*ai| {
-            while (ai.throw_countdown <= 1.0 / AI_DPS) {
+            while (ai.throw_countdown <= 1.0 / ai.darts_per_second) {
                 const random_x: f32 = @floatFromInt(rl.getRandomValue(
                     0,
                     @intFromFloat(bounds.width),
@@ -169,7 +169,7 @@ pub fn update(self: *Board, done: bool, bounds: rl.Rectangle, dt: f32) void {
                     .x = bounds.x + random_x,
                     .y = bounds.y + random_y,
                 });
-                ai.throw_countdown += 1.0 / AI_DPS;
+                ai.throw_countdown += 1.0 / ai.darts_per_second;
             }
             ai.throw_countdown -= dt;
         },

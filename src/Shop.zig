@@ -24,8 +24,6 @@ const UPGRADE_COUNT_FONT_SIZE = 22;
 
 const UPGRADE_PADDING = 5;
 
-const AI_BUY_PC = 1;
-
 pub const Upgrade = enum { spread, monkey, focus, monkey_focus, monkey_spread };
 
 const UpgradeInfo = struct {
@@ -139,16 +137,15 @@ pub fn update(self: *Shop, board: *Board, bounds: rl.Rectangle, dt: f32) void {
                     fields.click = true;
             }
         },
-        .ai => {
+        .ai => |ai| {
             for (std.enums.values(Upgrade)) |upgrade| {
-                const info = UPGRADE_DATA.getPtrConst(upgrade);
+                // const info = UPGRADE_DATA.getPtrConst(upgrade);
 
                 const cost = upgradeCost(board, upgrade);
                 if (cost > board.money)
                     continue;
 
-                if (rl.getRandomValue(0, 100) < AI_BUY_PC) {
-                    std.log.info("Ai buy {s}", .{info.name});
+                if (rl.getRandomValue(0, 100) < ai.upgrade_rate) {
                     board.buyUpgrade(upgrade);
                     board.money -= @intCast(cost);
                     board.upgrade_counts.getPtr(upgrade).* += 1;
