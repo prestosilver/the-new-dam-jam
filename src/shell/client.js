@@ -1,3 +1,11 @@
+/// Match joining functions
+
+// gets the current players match making score
+// and rank
+function get_score() {
+    return 1325;
+}
+
 // try and join a match, should be proceeded by
 // poll_match eventually returning true
 function join_match() {
@@ -32,3 +40,5 @@ function poll_ready() {
 
     return false;
 }
+
+/// Gameplay functions

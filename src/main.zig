@@ -101,7 +101,7 @@ fn getRank(score: u64, buf: []u8) [:0]const u8 {
     const idx = @divFloor(score, 1000);
 
     if (idx < RANKS.len)
-        return RANKS[idx];
+        return RANKS[@intCast(idx)];
 
     return std.fmt.bufPrintSentinel(
         buf,
@@ -152,6 +152,9 @@ pub fn main(_: std.process.Init) !void {
     rl.setExitKey(.null);
 
     setState(.lobby);
+
+    mms = @intCast(emasm.EM_ASM_INT("return get_score();", .{}));
+    render_mms = @floatFromInt(mms);
 
     //rl.hideCursor();
 
