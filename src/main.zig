@@ -221,10 +221,31 @@ pub fn main(init: std.process.Init) !void {
             defer rl.endDrawing();
 
             rl.clearBackground(BG_COLOR);
-            defer rl.drawText(@tagName(state), 0, 0, 22, .white);
+
+            var y: i32 = 0;
+            defer rl.drawText(@tagName(state), 0, y, 22, .white);
 
             switch (state) {
                 .lobby => {
+                    // play button
+                    rl.drawRectangleRounded(play_bounds, 0.2, 10, if (play.disabled)
+                        Shop.BUTTON_DISABLED_COLOR
+                    else if (play.click)
+                        Shop.BUTTON_CLICK_COLOR
+                    else if (play.focused)
+                        Shop.BUTTON_HOVER_COLOR
+                    else
+                        Shop.BUTTON_COLOR);
+
+                    rl.drawText(
+                        "PLAY",
+                        @intFromFloat(play_bounds.x + @divFloor(play_bounds.width - play_text_width, 2)),
+                        play_bounds.y + 10,
+                        play_bounds.height - 20,
+                        Shop.BUTTON_TEXT_COLOR,
+                    );
+
+                    // Debug draw
                     const visible_mms: u64 = @intFromFloat(render_mms);
 
                     const mms_text = std.fmt.bufPrintSentinel(
@@ -234,7 +255,6 @@ pub fn main(init: std.process.Init) !void {
                         0,
                     ) catch unreachable;
 
-                    var y: i32 = 22;
                     rl.drawText(mms_text, 0, y, 22, .white);
                     y += 22;
 
@@ -265,29 +285,40 @@ pub fn main(init: std.process.Init) !void {
                         .height = 50,
                     }, .white);
                     y += 50;
-
-                    // play button
-                    rl.drawRectangleRounded(play_bounds, 0.2, 10, if (play.disabled)
-                        Shop.BUTTON_DISABLED_COLOR
-                    else if (play.click)
-                        Shop.BUTTON_CLICK_COLOR
-                    else if (play.focused)
-                        Shop.BUTTON_HOVER_COLOR
-                    else
-                        Shop.BUTTON_COLOR);
-
-                    rl.drawText(
-                        "PLAY",
-                        @intFromFloat(play_bounds.x + @divFloor(play_bounds.width - play_text_width, 2)),
-                        play_bounds.y + 10,
-                        play_bounds.height - 20,
-                        Shop.BUTTON_TEXT_COLOR,
-                    );
                 },
                 .game => {
+                    // draw game
                     p1_board.draw(done, p1_bounds);
                     p2_board.draw(done, p2_bounds);
                     shop.draw(&p1_board, shop_bounds);
+
+                    // debug
+                    y += 100;
+                    const p1_text = std.fmt.bufPrintSentinel(
+                        &fmt_buf,
+                        "p2 v:{d} {s}",
+                        .{
+                            p1_board.thrown_darts - p1_board.first_dart,
+                            @tagName(p1_board.player),
+                        },
+                        0,
+                    ) catch unreachable;
+
+                    rl.drawText(p1_text, 0, y, 22, .white);
+                    y += 22;
+
+                    const p2_text = std.fmt.bufPrintSentinel(
+                        &fmt_buf,
+                        "p2 v:{d} {s}",
+                        .{
+                            p2_board.thrown_darts - p2_board.first_dart,
+                            @tagName(p2_board.player),
+                        },
+                        0,
+                    ) catch unreachable;
+
+                    rl.drawText(p2_text, 0, y, 22, .white);
+                    y += 22;
                 },
                 .end => {},
             }
