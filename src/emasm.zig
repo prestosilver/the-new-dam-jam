@@ -1,17 +1,22 @@
 pub fn EM_ASM(comptime code: []const u8, args: anytype) void {
-    _ = @call(.auto, emscripten_asm_const_int, .{ CODE_EXPR(code), EM_ASM_ARG_SIGS(args) } ++ args);
+    if (@import("builtin").target.os.tag == .emscripten)
+        _ = @call(.auto, emscripten_asm_const_int, .{ CODE_EXPR(code), EM_ASM_ARG_SIGS(args) } ++ args);
 }
 
 pub fn EM_ASM_INT(comptime code: []const u8, args: anytype) c_int {
-    return @call(.auto, emscripten_asm_const_int, .{ CODE_EXPR(code), EM_ASM_ARG_SIGS(args) } ++ args);
+    if (@import("builtin").target.os.tag == .emscripten)
+        return @call(.auto, emscripten_asm_const_int, .{ CODE_EXPR(code), EM_ASM_ARG_SIGS(args) } ++ args);
+    return 0;
 }
 
 pub fn EM_ASM_PTR(comptime code: []const u8, args: anytype) ?*anyopaque {
-    return @call(.auto, emscripten_asm_const_ptr, .{ CODE_EXPR(code), EM_ASM_ARG_SIGS(args) } ++ args);
+    if (@import("builtin").target.os.tag == .emscripten)
+        return @call(.auto, emscripten_asm_const_ptr, .{ CODE_EXPR(code), EM_ASM_ARG_SIGS(args) } ++ args);
 }
 
 pub fn EM_ASM_DOUBLE(comptime code: []const u8, args: anytype) f64 {
-    return @call(.auto, emscripten_asm_const_double, .{ CODE_EXPR(code), EM_ASM_ARG_SIGS(args) } ++ args);
+    if (@import("builtin").target.os.tag == .emscripten)
+        return @call(.auto, emscripten_asm_const_double, .{ CODE_EXPR(code), EM_ASM_ARG_SIGS(args) } ++ args);
 }
 
 extern fn emscripten_asm_const_int(code: [*:0]const u8, arg_sigs: [*:0]const u8, ...) c_int;

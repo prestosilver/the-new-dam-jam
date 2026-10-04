@@ -11,6 +11,8 @@ const emasm = @import("emasm.zig");
 const RANKS = [_][:0]const u8{ "F", "D-", "D", "D+", "C-", "C", "C+", "B-", "B", "B+", "A-", "A", "A+", "A++", "S-", "S", "S+", "SS", "SS+", "SSS+" };
 const BG_COLOR: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
 const PLAY_SIZE: rl.Vector2 = .{ .x = 500, .y = 150 };
+const LOGIN_SIZE: rl.Vector2 = .{ .x = 500, .y = 150 };
+const CONTINUE_SIZE: rl.Vector2 = .{ .x = 550, .y = 150 };
 const PRACTICE_SIZE: rl.Vector2 = .{ .x = 250, .y = 75 };
 const P2_SIZE = 150;
 const SHOP_WIDTH = 450;
@@ -39,7 +41,7 @@ const std_options: std.Options = .{
     .logFn = customLogFn,
 };
 
-const State = enum { lobby, game, end };
+const State = enum { login, lobby, game, end };
 var state: State = undefined;
 
 const debug_text: bool = @import("builtin").mode == .Debug;
@@ -65,9 +67,67 @@ var practice_mode: bool = false;
 
 var fmt_buf: [64]u8 = undefined;
 var fmt_buf_two: [64]u8 = undefined;
+var user_buf: [32]u8 = undefined;
+var username: []u8 = "";
+
+fn login(name: ?[]const u8, password: ?[4]u8) void {
+    username = "";
+    if (name == null or password == null) {
+        if (@import("builtin").target.os.tag == .emscripten) {
+            const len = emasm.EM_ASM_INT(
+                \\data = try_login(null, null);
+                \\if (data == null || data.length == 0) return 0;
+                \\const encoder = new TextEncoder();
+                \\const stringBytes = encoder.encode(data);
+                \\const memoryView = new Uint8Array(wasmMemory.buffer, $0, stringBytes.len);
+                \\memoryView.set(stringBytes);
+                \\return stringBytes.length;
+            , .{
+                @as(*const anyopaque, &user_buf),
+            });
+            username = user_buf[0..@intCast(len)];
+        } else {
+            @memcpy(user_buf[0..4], "TEST");
+            username = user_buf[0..4];
+        }
+    } else {
+        if (@import("builtin").target.os.tag == .emscripten) {
+            const tmp_password = password.?;
+            const len = emasm.EM_ASM_INT(
+                \\const decoder = new TextDecoder();
+                \\const nameBytes = new Uint8Array(wasmMemory.buffer, $1, $2);
+                \\const passBytes = new Uint8Array(wasmMemory.buffer, $3, 4);
+                \\const name = decoder.decode(nameBytes);
+                \\const pass = decoder.decode(passBytes);
+                \\data = try_login(name, pass);
+                \\if (data == null || data.length == 0) return 0;
+                \\const encoder = new TextEncoder();
+                \\const stringBytes = encoder.encode(data);
+                \\const memoryView = new Uint8Array(wasmMemory.buffer, $0, stringBytes.len);
+                \\memoryView.set(stringBytes);
+                \\return stringBytes.length;
+            , .{
+                @as(*const anyopaque, &user_buf),
+                @as(*const anyopaque, name.?.ptr),
+                name.?.len,
+                @as(*const anyopaque, &tmp_password),
+            });
+            username = user_buf[0..@intCast(len)];
+        } else {
+            @memcpy(user_buf[0..4], "TEST");
+            username = user_buf[0..4];
+        }
+    }
+
+    if (username.len != 0)
+        return setState(.lobby);
+}
 
 fn setState(new_state: State) void {
     switch (new_state) {
+        .login => {
+            login(null, null);
+        },
         .lobby => {
             lobby_state = .lobby;
         },
@@ -76,15 +136,11 @@ fn setState(new_state: State) void {
 
             p1_board = .{ .player = .user, .font_size = 66 };
             if (practice_mode) {
-                // p2_board = .{
-                //     .player = .{ .ai = .{
-                //         .darts_per_second = 10,
-                //         .upgrade_rate = 1,
-                //     } },
-                //     .font_size = 25,
-                // };
                 p2_board = .{
-                    .player = .{ .web = .{} },
+                    .player = .{ .ai = .{
+                        .darts_per_second = 10,
+                        .upgrade_rate = 1,
+                    } },
                     .font_size = 25,
                 };
             } else {
@@ -121,25 +177,21 @@ fn playClick() void {
             lobby_state = .ready;
             wait_timer = 0.0;
 
+            mms = @intCast(emasm.EM_ASM_INT("return get_score();", .{}));
+
             // queue match
-            if (!debug_web) {
-                emasm.EM_ASM("join_match()", .{});
-            }
+            emasm.EM_ASM("join_match()", .{});
         },
         .ready => {
             lobby_state = .lobby;
             // cancel match
-            if (!debug_web) {
-                emasm.EM_ASM("cancel_match()", .{});
-            }
+            emasm.EM_ASM("cancel_match()", .{});
         },
         .matched => {
             lobby_state = .waiting;
             wait_timer = 0.0;
 
-            if (!debug_web) {
-                emasm.EM_ASM("ready_match()", .{});
-            }
+            emasm.EM_ASM("ready_match()", .{});
         },
         .waiting => {},
     }
@@ -155,9 +207,8 @@ pub fn main(_: std.process.Init) !void {
     rl.setTargetFPS(60);
     rl.setExitKey(.null);
 
-    setState(.lobby);
+    setState(.login);
 
-    mms = @intCast(emasm.EM_ASM_INT("return get_score();", .{}));
     render_mms = @floatFromInt(mms);
 
     //rl.hideCursor();
@@ -189,6 +240,16 @@ pub fn main(_: std.process.Init) !void {
         .height = build_options.SCREEN_HEIGHT,
     };
 
+    var login_button: Button = .{
+        .bounds = .{
+            .x = (build_options.SCREEN_WIDTH - LOGIN_SIZE.x) * 0.5,
+            .y = build_options.SCREEN_HEIGHT - LOGIN_SIZE.y - UI_PAD,
+            .width = LOGIN_SIZE.x,
+            .height = LOGIN_SIZE.y,
+        },
+        .text_size = LOGIN_SIZE.y - 20,
+    };
+
     var play_button: Button = .{
         .bounds = .{
             .x = (build_options.SCREEN_WIDTH - PLAY_SIZE.x) * 0.5,
@@ -197,6 +258,16 @@ pub fn main(_: std.process.Init) !void {
             .height = PLAY_SIZE.y,
         },
         .text_size = PLAY_SIZE.y - 20,
+    };
+
+    var continue_button: Button = .{
+        .bounds = .{
+            .x = (build_options.SCREEN_WIDTH - CONTINUE_SIZE.x) * 0.5,
+            .y = build_options.SCREEN_HEIGHT - CONTINUE_SIZE.y - UI_PAD,
+            .width = CONTINUE_SIZE.x,
+            .height = CONTINUE_SIZE.y,
+        },
+        .text_size = CONTINUE_SIZE.y - 20,
     };
 
     var practice_button: Button = .{
@@ -222,6 +293,13 @@ pub fn main(_: std.process.Init) !void {
         update: {
             // update state
             switch (state) {
+                .login => {
+                    login_button.update();
+
+                    if (login_button.isPressed()) {
+                        login("jeff", .{ '1', '2', '3', '4' });
+                    }
+                },
                 .lobby => {
                     const render_mms_int = @as(u32, @intFromFloat(render_mms));
                     if (render_mms_int < mms) {
@@ -242,9 +320,8 @@ pub fn main(_: std.process.Init) !void {
                         play_button.update();
                         practice_button.update();
 
-                        if (play_button.isPressed()) {
+                        if (play_button.isPressed())
                             playClick();
-                        }
 
                         if (practice_button.isPressed()) {
                             practice_mode = !practice_mode;
@@ -291,10 +368,21 @@ pub fn main(_: std.process.Init) !void {
                     }
                 },
                 .game => {
+                    if (done) {
+                        continue_button.update();
+                        if (continue_button.isPressed())
+                            setState(.end);
+                    }
+
                     if (game_begin > 0) {
                         game_begin -= dt;
 
                         break :update;
+                    }
+
+                    if (debug_web) {
+                        if (rl.isKeyPressed(.e))
+                            p1_board.processed_darts = Board.MAX_DARTS;
                     }
 
                     p1_board.update(done, p1_bounds, dt);
@@ -303,7 +391,11 @@ pub fn main(_: std.process.Init) !void {
                     shop.update(done, &p1_board, shop_bounds, dt);
                     shop.update(done, &p2_board, shop_bounds, dt);
                 },
-                .end => {},
+                .end => {
+                    continue_button.update();
+                    if (continue_button.isPressed())
+                        setState(.lobby);
+                },
             }
         }
 
@@ -326,6 +418,9 @@ pub fn main(_: std.process.Init) !void {
             };
 
             switch (state) {
+                .login => {
+                    login_button.draw("Login");
+                },
                 .lobby => {
                     // play button
                     practice_button.state.disabled = lobby_state != .lobby;
@@ -407,10 +502,13 @@ pub fn main(_: std.process.Init) !void {
                         );
                     }
 
+                    if (done)
+                        continue_button.draw("Continue");
+
                     if (!debug_text) break :draw;
 
                     // debug
-                    y += 100;
+                    y += P2_SIZE;
                     const p1_text = std.fmt.bufPrintSentinel(
                         &fmt_buf,
                         "p1 v:{d} {s}",
@@ -449,7 +547,9 @@ pub fn main(_: std.process.Init) !void {
                         y += 22;
                     }
                 },
-                .end => {},
+                .end => {
+                    continue_button.draw("Continue");
+                },
             }
         }
     }

@@ -1,9 +1,24 @@
+/// Login functions
+
+// attempts to login the current user if username
+// is null itll attempt to use a cached login password
+// is a set of 4 characters representing the chosen symbols.
+// returns the username of the logged in player, or null
+// on failure to login
+function try_login(username, password) {
+    console.log("TODO: login");
+
+    return null;
+}
+
 /// Match joining functions
 
 // gets the current players match making score
 // and rank
 function get_score() {
-    return 1325;
+    console.log("TODO: get mmr score");
+
+    return 0;
 }
 
 // try and join a match, should be proceeded by
