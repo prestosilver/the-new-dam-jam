@@ -2,9 +2,9 @@ const std = @import("std");
 const rl = @import("raylib");
 const build_options = @import("build_options");
 
-const PasswordBox = @import("PasswordBox.zig");
-const TextBox = @import("TextBox.zig");
-const Button = @import("Button.zig");
+const PasswordBox = @import("ui/PasswordBox.zig");
+const TextBox = @import("ui/TextBox.zig");
+const Button = @import("ui/Button.zig");
 const Board = @import("Board.zig");
 const Shop = @import("Shop.zig");
 

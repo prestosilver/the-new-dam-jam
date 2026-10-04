@@ -5,7 +5,7 @@ const build_options = @import("build_options");
 
 const emasm = @import("emasm.zig");
 const Board = @import("Board.zig");
-const Button = @import("Button.zig");
+const Button = @import("ui/Button.zig");
 
 const SHOP_BG: rl.Color = .{ .r = 128, .g = 42, .b = 98, .a = 255 };
 const SHOP_TEXT: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };

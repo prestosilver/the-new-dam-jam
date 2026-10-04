@@ -58,13 +58,13 @@ pub fn build(b: *std.Build) !void {
             .shell_file_path = b.path("src/shell/index.html"),
             .embed_paths = &.{
                 .{ .src_path = "assets/board.png", .virtual_path = "board.png" },
-                .{ .src_path = "assets/dart.png", .virtual_path = "dart.png" },
-                .{ .src_path = "assets/dart_shadow.png", .virtual_path = "dart_shadow.png" },
-                .{ .src_path = "assets/name_arrow.png", .virtual_path = "name_arrow.png" },
-                .{ .src_path = "assets/background.png", .virtual_path = "background.png" },
+                // .{ .src_path = "assets/dart.png", .virtual_path = "dart.png" },
+                // .{ .src_path = "assets/dart_shadow.png", .virtual_path = "dart_shadow.png" },
+                // .{ .src_path = "assets/name_arrow.png", .virtual_path = "name_arrow.png" },
+                // .{ .src_path = "assets/background.png", .virtual_path = "background.png" },
 
-                .{ .src_path = "assets/concrete.wav", .virtual_path = "concrete.wav" },
-                .{ .src_path = "assets/dart.wav", .virtual_path = "dart.wav" },
+                // .{ .src_path = "assets/concrete.wav", .virtual_path = "concrete.wav" },
+                // .{ .src_path = "assets/dart.wav", .virtual_path = "dart.wav" },
             },
         });
         b.getInstallStep().dependOn(emcc_step);
