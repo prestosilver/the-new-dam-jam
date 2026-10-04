@@ -259,6 +259,7 @@ fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
         },
         .lobby => {
             // play button
+            leaderboard_button.state.disabled = lobby_state != .lobby;
             practice_button.state.disabled = lobby_state != .lobby;
             play_button.state.disabled = lobby_state == .waiting;
             const play_text = switch (lobby_state) {
