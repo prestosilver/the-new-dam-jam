@@ -5,3 +5,4 @@ zig-pkg
 .vscode
 **/db/generated
 client/node_modules
+client/dist
