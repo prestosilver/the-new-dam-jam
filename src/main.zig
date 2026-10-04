@@ -2,6 +2,7 @@ const std = @import("std");
 const rl = @import("raylib");
 const build_options = @import("build_options");
 
+const PasswordBox = @import("PasswordBox.zig");
 const TextBox = @import("TextBox.zig");
 const Button = @import("Button.zig");
 const Board = @import("Board.zig");
@@ -13,7 +14,8 @@ const RANKS = [_][:0]const u8{ "F", "D-", "D", "D+", "C-", "C", "C+", "B-", "B",
 const BG_COLOR: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
 const USER_SIZE: rl.Vector2 = .{ .x = 700, .y = 100 };
 const PLAY_SIZE: rl.Vector2 = .{ .x = 500, .y = 150 };
-const LOGIN_SIZE: rl.Vector2 = .{ .x = 500, .y = 150 };
+const LOGIN_SIZE: rl.Vector2 = .{ .x = 400, .y = 100 };
+const PASS_SIZE: rl.Vector2 = .{ .x = 100, .y = 200 };
 const CONTINUE_SIZE: rl.Vector2 = .{ .x = 550, .y = 150 };
 const PRACTICE_SIZE: rl.Vector2 = .{ .x = 250, .y = 75 };
 const P2_SIZE = 150;
@@ -73,6 +75,7 @@ var user_buf: [32]u8 = undefined;
 var username: []u8 = "";
 
 var name_buf: [12]u8 = undefined;
+var pass_buf: [4]u8 = "aaaa".*; // A serializable char
 
 fn login(name: ?[]const u8, password: ?[4]u8) void {
     username = "";
@@ -244,10 +247,24 @@ pub fn main(_: std.process.Init) !void {
         .height = build_options.SCREEN_HEIGHT,
     };
 
+    var password_boxes: [4]PasswordBox = undefined;
+    for (&password_boxes, &pass_buf, 0..) |*box, *char, idx| {
+        box.* = .{
+            .bounds = .{
+                .x = @as(f32, @floatFromInt(build_options.SCREEN_WIDTH)) / 2 - PASS_SIZE.x * 2 + (PASS_SIZE.x * @as(f32, @floatFromInt(idx))),
+                .y = @floatFromInt(10 + build_options.SCREEN_HEIGHT / 2),
+                .width = PASS_SIZE.x,
+                .height = PASS_SIZE.y,
+            },
+            .text_size = USER_SIZE.y - 20,
+            .char = char,
+        };
+    }
+
     var login_box: TextBox = .{
         .bounds = .{
             .x = (build_options.SCREEN_WIDTH - USER_SIZE.x) * 0.5,
-            .y = (build_options.SCREEN_HEIGHT - USER_SIZE.y) * 0.5,
+            .y = (build_options.SCREEN_HEIGHT) * 0.5 - USER_SIZE.y,
             .width = USER_SIZE.x,
             .height = USER_SIZE.y,
         },
@@ -311,9 +328,11 @@ pub fn main(_: std.process.Init) !void {
                 .login => {
                     login_button.update();
                     login_box.update();
+                    for (&password_boxes) |*box|
+                        box.update();
 
                     if (login_button.isPressed() or rl.isKeyPressed(.enter)) {
-                        login(login_box.getText(), .{ '1', '2', '3', '4' });
+                        login(login_box.getText(), pass_buf);
                     }
                 },
                 .lobby => {
@@ -437,6 +456,9 @@ pub fn main(_: std.process.Init) !void {
                 .login => {
                     login_button.draw("Login");
                     login_box.draw();
+
+                    for (&password_boxes) |*box|
+                        box.draw();
                 },
                 .lobby => {
                     // play button
