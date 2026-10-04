@@ -45,14 +45,15 @@ const std_options: std.Options = .{
     .logFn = customLogFn,
 };
 
-const State = enum { login, lobby, game, end, leaderboard };
-var state: State = undefined;
+const State = enum { loading, login, lobby, game, end, leaderboard };
+var state: State = .loading;
+var last_state: State = .loading;
 
 const debug_text: bool = @import("builtin").mode == .Debug;
 const debug_web: bool = @import("builtin").mode == .Debug;
 
 /// This is the percent progress of the current state transition
-var transition_timer: f64 = 0.0;
+var transition_timer: f32 = 0.0;
 
 // The lobbys state
 var lobby_state: enum { lobby, ready, matched, waiting } = .lobby;
@@ -76,6 +77,22 @@ var username: []u8 = "";
 
 var name_buf: [12]u8 = undefined;
 var pass_buf: [4]u8 = "aaaa".*; // A serializable char
+
+var password_boxes: [4]PasswordBox = undefined;
+var login_box: TextBox = undefined;
+
+var login_button: Button = undefined;
+var play_button: Button = undefined;
+var continue_button: Button = undefined;
+var practice_button: Button = undefined;
+var back_button: Button = undefined;
+var leaderboard_button: Button = undefined;
+
+var p1_bounds: rl.Rectangle = undefined;
+var p2_bounds: rl.Rectangle = undefined;
+var shop_bounds: rl.Rectangle = undefined;
+
+var game_started: bool = false;
 
 fn login(name: ?[]const u8, password: ?[4]u8) void {
     username = "";
@@ -132,6 +149,7 @@ fn login(name: ?[]const u8, password: ?[4]u8) void {
 
 fn setState(new_state: State) void {
     switch (new_state) {
+        .loading => {},
         .login => {
             login(null, null);
         },
@@ -139,6 +157,7 @@ fn setState(new_state: State) void {
             lobby_state = .lobby;
         },
         .game => {
+            game_started = true;
             game_begin = 3.0;
 
             p1_board = .{ .player = .user, .font_size = 66 };
@@ -161,8 +180,10 @@ fn setState(new_state: State) void {
         .leaderboard => {},
     }
 
+    last_state = state;
     state = new_state;
-    transition_timer = 0.0;
+    if (last_state != state)
+        transition_timer = 0.0;
 }
 
 fn getRank(score: u64, buf: []u8) [:0]const u8 {
@@ -205,6 +226,195 @@ fn playClick() void {
     }
 }
 
+fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
+    rl.beginMode2D(.{
+        .offset = offset,
+        .target = undefined,
+        .rotation = 0,
+        .zoom = 1.0,
+    });
+    defer rl.endMode2D();
+
+    // draw frame
+
+    var y: i32 = 0;
+    defer if (debug_text) {
+        const state_text = std.fmt.bufPrintSentinel(
+            &fmt_buf,
+            "draw_state v: {s} f: {}",
+            .{ @tagName(state), rl.getFPS() },
+            0,
+        ) catch unreachable;
+        rl.drawText(state_text, 0, y, 22, .white);
+    };
+
+    switch (draw_state) {
+        .loading => {},
+        .login => {
+            login_button.draw("Login");
+            login_box.draw();
+
+            for (&password_boxes) |*box|
+                box.draw();
+        },
+        .lobby => {
+            // play button
+            practice_button.state.disabled = lobby_state != .lobby;
+            play_button.state.disabled = lobby_state == .waiting;
+            const play_text = switch (lobby_state) {
+                .lobby => "Ready",
+                .ready => "Cancel",
+                .matched => "Begin",
+                .waiting => "Waiting",
+            };
+            play_button.draw(play_text);
+
+            const practice_text = if (practice_mode) "Practice" else "PVP";
+            practice_button.draw(practice_text);
+            leaderboard_button.draw("Leaders");
+
+            if (!debug_text) return;
+
+            // Debug draw
+            const visible_mms: u64 = @intFromFloat(render_mms);
+
+            const rank_score = @mod(visible_mms, 1000);
+            rl.drawRectangleRec(.{
+                .x = 0,
+                .y = @floatFromInt(y),
+                .width = 500,
+                .height = 50,
+            }, .gray);
+            rl.drawRectangleRec(.{
+                .x = 0,
+                .y = @floatFromInt(y),
+                .width = 500 * (@as(f32, @floatFromInt(rank_score)) / 1000.0),
+                .height = 50,
+            }, .white);
+            y += 50;
+
+            const lobby_state_text = std.fmt.bufPrintSentinel(
+                &fmt_buf,
+                "lobby s: {s} w: {d}",
+                .{ @tagName(lobby_state), @as(i32, @intFromFloat(wait_timer)) },
+                0,
+            ) catch unreachable;
+            rl.drawText(lobby_state_text, 0, y, 22, .white);
+            y += 22;
+
+            const user_state_text = std.fmt.bufPrintSentinel(
+                &fmt_buf,
+                "user v: {s}",
+                .{username},
+                0,
+            ) catch unreachable;
+            rl.drawText(user_state_text, 0, y, 22, .white);
+            y += 22;
+
+            const rank_text = getRank(visible_mms, &fmt_buf_two);
+            const mms_text = std.fmt.bufPrintSentinel(
+                &fmt_buf,
+                "score r: {s} v: {d} x: {d}",
+                .{ rank_text, visible_mms, rank_score },
+                0,
+            ) catch unreachable;
+            rl.drawText(mms_text, 0, y, 22, .white);
+            y += 22;
+        },
+        .game => {
+            // draw game
+            p1_board.draw(game_done, p1_bounds);
+            p2_board.draw(game_done, p2_bounds);
+            shop.draw(&p1_board, shop_bounds);
+
+            if (game_started and game_done) {
+                game_started = false;
+                transition_timer = 0.0;
+            }
+
+            if (game_begin > 0) {
+                const countdown_text = std.fmt.bufPrintSentinel(
+                    &fmt_buf,
+                    "{d}",
+                    .{
+                        @as(i32, @intFromFloat(@ceil(game_begin))),
+                    },
+                    0,
+                ) catch unreachable;
+
+                const text_width = rl.measureText(countdown_text, 200);
+
+                rl.drawText(
+                    countdown_text,
+                    @divTrunc(build_options.SCREEN_WIDTH - text_width, 2),
+                    @divTrunc(build_options.SCREEN_HEIGHT - 200, 2),
+                    200,
+                    .white,
+                );
+            }
+
+            if (game_done) {
+                rl.drawRectangleRec(.{
+                    .x = 0,
+                    .y = 0,
+                    .width = build_options.SCREEN_WIDTH,
+                    .height = build_options.SCREEN_HEIGHT,
+                }, .alpha(.black, transition_timer));
+
+                continue_button.draw("Continue");
+            }
+
+            if (!debug_text) return;
+
+            // debug
+            y += P2_SIZE;
+            const p1_text = std.fmt.bufPrintSentinel(
+                &fmt_buf,
+                "p1 v:{d} {s}",
+                .{
+                    p1_board.thrown_darts - p1_board.first_dart,
+                    @tagName(p1_board.player),
+                },
+                0,
+            ) catch unreachable;
+
+            rl.drawText(p1_text, 0, y, 22, .white);
+            y += 22;
+
+            const p2_text = std.fmt.bufPrintSentinel(
+                &fmt_buf,
+                "p2 v:{d} {s}",
+                .{
+                    p2_board.thrown_darts - p2_board.first_dart,
+                    @tagName(p2_board.player),
+                },
+                0,
+            ) catch unreachable;
+
+            rl.drawText(p2_text, 0, y, 22, .white);
+            y += 22;
+
+            if (game_begin > 0) {
+                const begin_text = std.fmt.bufPrintSentinel(
+                    &fmt_buf,
+                    "timer {d}",
+                    .{@as(i32, @intFromFloat(@ceil(game_begin)))},
+                    0,
+                ) catch unreachable;
+
+                rl.drawText(begin_text, 0, y, 22, .white);
+                y += 22;
+            }
+        },
+        .end => {
+            continue_button.draw("Return");
+        },
+        .leaderboard => {
+            back_button.draw("Back");
+        },
+    }
+}
+
 pub fn main(_: std.process.Init) !void {
     rl.initWindow(build_options.SCREEN_WIDTH, build_options.SCREEN_HEIGHT, build_options.GAME_NAME);
     defer rl.closeWindow();
@@ -217,6 +427,8 @@ pub fn main(_: std.process.Init) !void {
 
     setState(.login);
 
+    transition_timer = 1.0;
+
     render_mms = @floatFromInt(mms);
 
     //rl.hideCursor();
@@ -228,27 +440,26 @@ pub fn main(_: std.process.Init) !void {
     defer Board.background_texture.unload();
 
     const board_width = (build_options.SCREEN_WIDTH - SHOP_WIDTH);
-    const p1_bounds = rl.Rectangle{
+    p1_bounds = rl.Rectangle{
         .x = 0,
         .y = 0,
         .width = board_width,
         .height = build_options.SCREEN_HEIGHT,
     };
-    const p2_bounds = rl.Rectangle{
+    p2_bounds = rl.Rectangle{
         .x = 0,
         .y = 0,
         .width = P2_SIZE,
         .height = P2_SIZE,
     };
 
-    const shop_bounds = rl.Rectangle{
+    shop_bounds = rl.Rectangle{
         .x = build_options.SCREEN_WIDTH - SHOP_WIDTH,
         .y = 0,
         .width = SHOP_WIDTH,
         .height = build_options.SCREEN_HEIGHT,
     };
 
-    var password_boxes: [4]PasswordBox = undefined;
     for (&password_boxes, &pass_buf, 0..) |*box, *char, idx| {
         box.* = .{
             .bounds = .{
@@ -262,7 +473,7 @@ pub fn main(_: std.process.Init) !void {
         };
     }
 
-    var login_box: TextBox = .{
+    login_box = .{
         .bounds = .{
             .x = (build_options.SCREEN_WIDTH - USER_SIZE.x) * 0.5,
             .y = (build_options.SCREEN_HEIGHT) * 0.5 - USER_SIZE.y,
@@ -273,7 +484,7 @@ pub fn main(_: std.process.Init) !void {
         .text = .initBuffer(&name_buf),
     };
 
-    var login_button: Button = .{
+    login_button = .{
         .bounds = .{
             .x = (build_options.SCREEN_WIDTH - LOGIN_SIZE.x) * 0.5,
             .y = build_options.SCREEN_HEIGHT - LOGIN_SIZE.y - UI_PAD,
@@ -283,7 +494,7 @@ pub fn main(_: std.process.Init) !void {
         .text_size = LOGIN_SIZE.y - 20,
     };
 
-    var play_button: Button = .{
+    play_button = .{
         .bounds = .{
             .x = (build_options.SCREEN_WIDTH - PLAY_SIZE.x) * 0.5,
             .y = build_options.SCREEN_HEIGHT - PLAY_SIZE.y - UI_PAD,
@@ -293,7 +504,7 @@ pub fn main(_: std.process.Init) !void {
         .text_size = PLAY_SIZE.y - 20,
     };
 
-    var continue_button: Button = .{
+    continue_button = .{
         .bounds = .{
             .x = (build_options.SCREEN_WIDTH - CONTINUE_SIZE.x) * 0.5,
             .y = build_options.SCREEN_HEIGHT - CONTINUE_SIZE.y - UI_PAD,
@@ -303,7 +514,7 @@ pub fn main(_: std.process.Init) !void {
         .text_size = CONTINUE_SIZE.y - 20,
     };
 
-    var practice_button: Button = .{
+    practice_button = .{
         .bounds = .{
             .x = build_options.SCREEN_WIDTH - UI_PAD - PRACTICE_SIZE.x,
             .y = build_options.SCREEN_HEIGHT - UI_PAD - PRACTICE_SIZE.y,
@@ -313,7 +524,7 @@ pub fn main(_: std.process.Init) !void {
         .text_size = PRACTICE_SIZE.y - 20,
     };
 
-    var back_button: Button = .{
+    back_button = .{
         .bounds = .{
             .x = build_options.SCREEN_WIDTH - UI_PAD - PRACTICE_SIZE.x,
             .y = build_options.SCREEN_HEIGHT - UI_PAD - PRACTICE_SIZE.y,
@@ -323,7 +534,7 @@ pub fn main(_: std.process.Init) !void {
         .text_size = PRACTICE_SIZE.y - 20,
     };
 
-    var leaderboard_button: Button = .{
+    leaderboard_button = .{
         .bounds = .{
             .x = UI_PAD,
             .y = build_options.SCREEN_HEIGHT - UI_PAD - PRACTICE_SIZE.y,
@@ -337,15 +548,16 @@ pub fn main(_: std.process.Init) !void {
 
     while (!rl.windowShouldClose()) {
         const dt = rl.getFrameTime();
-        transition_timer += dt / 2.0;
+        transition_timer += dt * 4.0;
         transition_timer = @min(1.0, transition_timer);
 
-        const done = p1_board.processed_darts == Board.MAX_DARTS or
+        const game_done = p1_board.processed_darts == Board.MAX_DARTS or
             p2_board.processed_darts == Board.MAX_DARTS;
 
         update: {
             // update state
             switch (state) {
+                .loading => {},
                 .login => {
                     login_button.update();
                     login_box.update();
@@ -427,7 +639,7 @@ pub fn main(_: std.process.Init) !void {
                     }
                 },
                 .game => {
-                    if (done) {
+                    if (game_done) {
                         continue_button.update();
                         if (continue_button.isPressed())
                             setState(.end);
@@ -444,11 +656,11 @@ pub fn main(_: std.process.Init) !void {
                             p1_board.processed_darts = Board.MAX_DARTS;
                     }
 
-                    p1_board.update(done, p1_bounds, dt);
-                    p2_board.update(done, p2_bounds, dt);
+                    p1_board.update(game_done, p1_bounds, dt);
+                    p2_board.update(game_done, p2_bounds, dt);
 
-                    shop.update(done, &p1_board, shop_bounds, dt);
-                    shop.update(done, &p2_board, shop_bounds, dt);
+                    shop.update(game_done, &p1_board, shop_bounds, dt);
+                    shop.update(game_done, &p2_board, shop_bounds, dt);
                 },
                 .end => {
                     continue_button.update();
@@ -462,175 +674,56 @@ pub fn main(_: std.process.Init) !void {
                 },
             }
         }
-
-        draw: {
-            // draw frame
+        {
             rl.beginDrawing();
             defer rl.endDrawing();
 
             rl.clearBackground(BG_COLOR);
 
-            var y: i32 = 0;
-            defer if (debug_text) {
-                const state_text = std.fmt.bufPrintSentinel(
-                    &fmt_buf,
-                    "state v: {s} f: {}",
-                    .{ @tagName(state), rl.getFPS() },
-                    0,
-                ) catch unreachable;
-                rl.drawText(state_text, 0, y, 22, .white);
-            };
-
-            switch (state) {
-                .login => {
-                    login_button.draw("Login");
-                    login_box.draw();
-
-                    for (&password_boxes) |*box|
-                        box.draw();
-                },
-                .lobby => {
-                    // play button
-                    practice_button.state.disabled = lobby_state != .lobby;
-                    play_button.state.disabled = lobby_state == .waiting;
-                    const play_text = switch (lobby_state) {
-                        .lobby => "Ready",
-                        .ready => "Cancel",
-                        .matched => "Begin",
-                        .waiting => "Waiting",
-                    };
-                    play_button.draw(play_text);
-
-                    const practice_text = if (practice_mode) "Practice" else "PVP";
-                    practice_button.draw(practice_text);
-                    leaderboard_button.draw("Leaders");
-
-                    if (!debug_text) break :draw;
-
-                    // Debug draw
-                    const visible_mms: u64 = @intFromFloat(render_mms);
-
-                    const rank_score = @mod(visible_mms, 1000);
-                    rl.drawRectangleRec(.{
+            if (!(state == .game and !game_started and game_done) and transition_timer < 1.0) {
+                const last_position: ?rl.Vector2 = switch (state) {
+                    .lobby => if (last_state == .end) .{
+                        .x = build_options.SCREEN_WIDTH * transition_timer,
+                        .y = 0,
+                    } else .{
+                        .x = -build_options.SCREEN_WIDTH * transition_timer,
+                        .y = 0,
+                    },
+                    .game => .{
                         .x = 0,
-                        .y = @floatFromInt(y),
-                        .width = 500,
-                        .height = 50,
-                    }, .gray);
-                    rl.drawRectangleRec(.{
+                        .y = build_options.SCREEN_HEIGHT * transition_timer,
+                    },
+                    .leaderboard => .{
+                        .x = build_options.SCREEN_WIDTH * transition_timer,
+                        .y = 0,
+                    },
+                    else => null,
+                };
+                const current_position: rl.Vector2 = switch (state) {
+                    .lobby => if (last_state == .end) .{
+                        .x = build_options.SCREEN_WIDTH * transition_timer - build_options.SCREEN_WIDTH,
+                        .y = 0,
+                    } else .{
+                        .x = build_options.SCREEN_WIDTH - build_options.SCREEN_WIDTH * transition_timer,
+                        .y = 0,
+                    },
+                    .game => .{
                         .x = 0,
-                        .y = @floatFromInt(y),
-                        .width = 500 * (@as(f32, @floatFromInt(rank_score)) / 1000.0),
-                        .height = 50,
-                    }, .white);
-                    y += 50;
+                        .y = build_options.SCREEN_HEIGHT * transition_timer - build_options.SCREEN_HEIGHT,
+                    },
+                    .leaderboard => .{
+                        .x = build_options.SCREEN_WIDTH * transition_timer - build_options.SCREEN_WIDTH,
+                        .y = 0,
+                    },
+                    else => .{ .x = 0, .y = 0 },
+                };
 
-                    const lobby_state_text = std.fmt.bufPrintSentinel(
-                        &fmt_buf,
-                        "lobby s: {s} w: {d}",
-                        .{ @tagName(lobby_state), @as(i32, @intFromFloat(wait_timer)) },
-                        0,
-                    ) catch unreachable;
-                    rl.drawText(lobby_state_text, 0, y, 22, .white);
-                    y += 22;
+                if (last_position) |last|
+                    draw(last_state, game_done, last);
 
-                    const user_state_text = std.fmt.bufPrintSentinel(
-                        &fmt_buf,
-                        "user v: {s}",
-                        .{username},
-                        0,
-                    ) catch unreachable;
-                    rl.drawText(user_state_text, 0, y, 22, .white);
-                    y += 22;
-
-                    const rank_text = getRank(visible_mms, &fmt_buf_two);
-                    const mms_text = std.fmt.bufPrintSentinel(
-                        &fmt_buf,
-                        "score r: {s} v: {d} x: {d}",
-                        .{ rank_text, visible_mms, rank_score },
-                        0,
-                    ) catch unreachable;
-                    rl.drawText(mms_text, 0, y, 22, .white);
-                    y += 22;
-                },
-                .game => {
-                    // draw game
-                    p1_board.draw(done, p1_bounds);
-                    p2_board.draw(done, p2_bounds);
-                    shop.draw(&p1_board, shop_bounds);
-
-                    if (game_begin > 0) {
-                        const countdown_text = std.fmt.bufPrintSentinel(
-                            &fmt_buf,
-                            "{d}",
-                            .{
-                                @as(i32, @intFromFloat(@ceil(game_begin))),
-                            },
-                            0,
-                        ) catch unreachable;
-
-                        const text_width = rl.measureText(countdown_text, 200);
-
-                        rl.drawText(
-                            countdown_text,
-                            @divTrunc(build_options.SCREEN_WIDTH - text_width, 2),
-                            @divTrunc(build_options.SCREEN_HEIGHT - 200, 2),
-                            200,
-                            .white,
-                        );
-                    }
-
-                    if (done)
-                        continue_button.draw("Continue");
-
-                    if (!debug_text) break :draw;
-
-                    // debug
-                    y += P2_SIZE;
-                    const p1_text = std.fmt.bufPrintSentinel(
-                        &fmt_buf,
-                        "p1 v:{d} {s}",
-                        .{
-                            p1_board.thrown_darts - p1_board.first_dart,
-                            @tagName(p1_board.player),
-                        },
-                        0,
-                    ) catch unreachable;
-
-                    rl.drawText(p1_text, 0, y, 22, .white);
-                    y += 22;
-
-                    const p2_text = std.fmt.bufPrintSentinel(
-                        &fmt_buf,
-                        "p2 v:{d} {s}",
-                        .{
-                            p2_board.thrown_darts - p2_board.first_dart,
-                            @tagName(p2_board.player),
-                        },
-                        0,
-                    ) catch unreachable;
-
-                    rl.drawText(p2_text, 0, y, 22, .white);
-                    y += 22;
-
-                    if (game_begin > 0) {
-                        const begin_text = std.fmt.bufPrintSentinel(
-                            &fmt_buf,
-                            "timer {d}",
-                            .{@as(i32, @intFromFloat(@ceil(game_begin)))},
-                            0,
-                        ) catch unreachable;
-
-                        rl.drawText(begin_text, 0, y, 22, .white);
-                        y += 22;
-                    }
-                },
-                .end => {
-                    continue_button.draw("Continue");
-                },
-                .leaderboard => {
-                    back_button.draw("Back");
-                },
+                draw(state, game_done, current_position);
+            } else {
+                draw(state, game_done, .{ .x = 0, .y = 0 });
             }
         }
     }
