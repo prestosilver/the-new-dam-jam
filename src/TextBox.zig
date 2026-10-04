@@ -30,9 +30,7 @@ pub fn update(self: *TextBox) void {
 
     if (rl.isKeyPressed(.backspace) or
         rl.isKeyPressedRepeat(.backspace))
-    {
         _ = self.text.pop();
-    }
 }
 
 pub fn draw(self: *const TextBox) void {

@@ -64,7 +64,7 @@ const UPGRADE_DATA: std.enums.EnumArray(Upgrade, UpgradeInfo) = .init(.{
         .desc = "Monkeys throw more darts\nat once",
 
         .base_cost = 1000,
-        .mult = 1.5,
+        .mult = 2.0,
     },
 });
 
