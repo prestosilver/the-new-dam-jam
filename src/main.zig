@@ -45,7 +45,7 @@ const std_options: std.Options = .{
     .logFn = customLogFn,
 };
 
-const State = enum { login, lobby, game, end };
+const State = enum { login, lobby, game, end, leaderboard };
 var state: State = undefined;
 
 const debug_text: bool = @import("builtin").mode == .Debug;
@@ -158,6 +158,7 @@ fn setState(new_state: State) void {
             }
         },
         .end => {},
+        .leaderboard => {},
     }
 
     state = new_state;
@@ -312,6 +313,16 @@ pub fn main(_: std.process.Init) !void {
         .text_size = PRACTICE_SIZE.y - 20,
     };
 
+    var leaderboard_button: Button = .{
+        .bounds = .{
+            .x = UI_PAD,
+            .y = build_options.SCREEN_HEIGHT - UI_PAD - PRACTICE_SIZE.y,
+            .width = PRACTICE_SIZE.x,
+            .height = PRACTICE_SIZE.y,
+        },
+        .text_size = PRACTICE_SIZE.y - 20,
+    };
+
     shop.init(shop_bounds);
 
     while (!rl.windowShouldClose()) {
@@ -354,13 +365,16 @@ pub fn main(_: std.process.Init) !void {
                         // Play button logic
                         play_button.update();
                         practice_button.update();
+                        leaderboard_button.update();
 
                         if (play_button.isPressed())
                             playClick();
 
-                        if (practice_button.isPressed()) {
+                        if (practice_button.isPressed())
                             practice_mode = !practice_mode;
-                        }
+
+                        if (leaderboard_button.isPressed())
+                            setState(.leaderboard);
                     }
 
                     if (lobby_state == .ready or
@@ -431,6 +445,7 @@ pub fn main(_: std.process.Init) !void {
                     if (continue_button.isPressed())
                         setState(.lobby);
                 },
+                .leaderboard => {},
             }
         }
 
@@ -474,6 +489,7 @@ pub fn main(_: std.process.Init) !void {
 
                     const practice_text = if (practice_mode) "Practice" else "PVP";
                     practice_button.draw(practice_text);
+                    leaderboard_button.draw("Leaders");
 
                     if (!debug_text) break :draw;
 
@@ -598,6 +614,7 @@ pub fn main(_: std.process.Init) !void {
                 .end => {
                     continue_button.draw("Continue");
                 },
+                .leaderboard => {},
             }
         }
     }
