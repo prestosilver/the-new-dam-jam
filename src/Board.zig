@@ -253,7 +253,7 @@ pub fn draw(self: *const Board, done: bool, bounds: rl.Rectangle) void {
     ));
 
     rl.drawText(
-        if (done) (if (self.thrown_darts == MAX_DARTS) "Winner" else "Loser") else darts_text,
+        if (done) (if (self.processed_darts == MAX_DARTS) "Winner" else "Loser") else darts_text,
         @intFromFloat(center.x - size / 2),
         @intFromFloat(bounds.y),
         @intFromFloat(self.font_size),
@@ -263,7 +263,8 @@ pub fn draw(self: *const Board, done: bool, bounds: rl.Rectangle) void {
 
 pub fn throwDart(self: *Board, bounds: rl.Rectangle, position: rl.Vector2) void {
     for (0..self.shot_stats.darts_per_shot) |_| {
-        if (self.thrown_darts >= MAX_DARTS) return;
+        if (self.thrown_darts >= MAX_DARTS or
+            self.processed_darts >= MAX_DARTS) return;
 
         const angle = @as(f32, @floatFromInt(rl.getRandomValue(0, 100))) / 100.0 * std.math.pi * 2;
         const mag = std.math.sqrt(@as(f32, @floatFromInt(rl.getRandomValue(0, 100))) / 100.0) * self.shot_stats.aim_focus;
