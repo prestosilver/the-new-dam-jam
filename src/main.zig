@@ -312,7 +312,7 @@ pub fn main(_: std.process.Init) !void {
                     login_button.update();
                     login_box.update();
 
-                    if (login_button.isPressed()) {
+                    if (login_button.isPressed() or rl.isKeyPressed(.enter)) {
                         login(login_box.getText(), .{ '1', '2', '3', '4' });
                     }
                 },
