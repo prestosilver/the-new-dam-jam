@@ -6,9 +6,12 @@
 // returns the username of the logged in player, or null
 // on failure to login
 function try_login(username, password) {
-    console.log("TODO: login");
+    if (username == null || username.length == 0)
+        return null;
+    
+    console.log("TODO: login " + username);
 
-    return null;
+    return username;
 }
 
 /// Match joining functions

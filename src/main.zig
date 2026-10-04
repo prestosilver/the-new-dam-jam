@@ -2,6 +2,7 @@ const std = @import("std");
 const rl = @import("raylib");
 const build_options = @import("build_options");
 
+const TextBox = @import("TextBox.zig");
 const Button = @import("Button.zig");
 const Board = @import("Board.zig");
 const Shop = @import("Shop.zig");
@@ -10,6 +11,7 @@ const emasm = @import("emasm.zig");
 
 const RANKS = [_][:0]const u8{ "F", "D-", "D", "D+", "C-", "C", "C+", "B-", "B", "B+", "A-", "A", "A+", "A++", "S-", "S", "S+", "SS", "SS+", "SSS+" };
 const BG_COLOR: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
+const USER_SIZE: rl.Vector2 = .{ .x = 700, .y = 100 };
 const PLAY_SIZE: rl.Vector2 = .{ .x = 500, .y = 150 };
 const LOGIN_SIZE: rl.Vector2 = .{ .x = 500, .y = 150 };
 const CONTINUE_SIZE: rl.Vector2 = .{ .x = 550, .y = 150 };
@@ -69,6 +71,8 @@ var fmt_buf: [64]u8 = undefined;
 var fmt_buf_two: [64]u8 = undefined;
 var user_buf: [32]u8 = undefined;
 var username: []u8 = "";
+
+var name_buf: [12]u8 = undefined;
 
 fn login(name: ?[]const u8, password: ?[4]u8) void {
     username = "";
@@ -240,6 +244,17 @@ pub fn main(_: std.process.Init) !void {
         .height = build_options.SCREEN_HEIGHT,
     };
 
+    var login_box: TextBox = .{
+        .bounds = .{
+            .x = (build_options.SCREEN_WIDTH - USER_SIZE.x) * 0.5,
+            .y = (build_options.SCREEN_HEIGHT - USER_SIZE.y) * 0.5,
+            .width = USER_SIZE.x,
+            .height = USER_SIZE.y,
+        },
+        .text_size = USER_SIZE.y - 20,
+        .text = .initBuffer(&name_buf),
+    };
+
     var login_button: Button = .{
         .bounds = .{
             .x = (build_options.SCREEN_WIDTH - LOGIN_SIZE.x) * 0.5,
@@ -295,9 +310,10 @@ pub fn main(_: std.process.Init) !void {
             switch (state) {
                 .login => {
                     login_button.update();
+                    login_box.update();
 
                     if (login_button.isPressed()) {
-                        login("jeff", .{ '1', '2', '3', '4' });
+                        login(login_box.getText(), .{ '1', '2', '3', '4' });
                     }
                 },
                 .lobby => {
@@ -420,6 +436,7 @@ pub fn main(_: std.process.Init) !void {
             switch (state) {
                 .login => {
                     login_button.draw("Login");
+                    login_box.draw();
                 },
                 .lobby => {
                     // play button
@@ -463,6 +480,15 @@ pub fn main(_: std.process.Init) !void {
                         0,
                     ) catch unreachable;
                     rl.drawText(lobby_state_text, 0, y, 22, .white);
+                    y += 22;
+
+                    const user_state_text = std.fmt.bufPrintSentinel(
+                        &fmt_buf,
+                        "user v: {s}",
+                        .{username},
+                        0,
+                    ) catch unreachable;
+                    rl.drawText(user_state_text, 0, y, 22, .white);
                     y += 22;
 
                     const rank_text = getRank(visible_mms, &fmt_buf_two);
