@@ -313,6 +313,16 @@ pub fn main(_: std.process.Init) !void {
         .text_size = PRACTICE_SIZE.y - 20,
     };
 
+    var back_button: Button = .{
+        .bounds = .{
+            .x = build_options.SCREEN_WIDTH - UI_PAD - PRACTICE_SIZE.x,
+            .y = build_options.SCREEN_HEIGHT - UI_PAD - PRACTICE_SIZE.y,
+            .width = PRACTICE_SIZE.x,
+            .height = PRACTICE_SIZE.y,
+        },
+        .text_size = PRACTICE_SIZE.y - 20,
+    };
+
     var leaderboard_button: Button = .{
         .bounds = .{
             .x = UI_PAD,
@@ -445,7 +455,11 @@ pub fn main(_: std.process.Init) !void {
                     if (continue_button.isPressed())
                         setState(.lobby);
                 },
-                .leaderboard => {},
+                .leaderboard => {
+                    back_button.update();
+                    if (back_button.isPressed())
+                        setState(.lobby);
+                },
             }
         }
 
@@ -614,7 +628,9 @@ pub fn main(_: std.process.Init) !void {
                 .end => {
                     continue_button.draw("Continue");
                 },
-                .leaderboard => {},
+                .leaderboard => {
+                    back_button.draw("Back");
+                },
             }
         }
     }
