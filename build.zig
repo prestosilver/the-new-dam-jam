@@ -69,10 +69,14 @@ pub fn build(b: *std.Build) !void {
         });
         b.getInstallStep().dependOn(emcc_step);
 
+        const npm_init_build_step = b.addSystemCommand(&.{ "npm", "--prefix", "client", "i" });
+
         const npm_client_js_build_step = b.addSystemCommand(&.{ "npm", "--prefix", "client", "run", "build" });
 
         const client_js_step = b.addInstallFile(b.path("client/dist/index.js"), "web/client.js");
+
         emcc_step.dependOn(&client_js_step.step);
+        npm_client_js_build_step.step.dependOn(&npm_init_build_step.step);
         client_js_step.step.dependOn(&npm_client_js_build_step.step);
 
         const html_filename = try std.fmt.allocPrint(b.allocator, "index.html", .{});
