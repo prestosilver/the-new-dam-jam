@@ -3,6 +3,7 @@ const rl = @import("raylib");
 
 const build_options = @import("build_options");
 
+const emasm = @import("emasm.zig");
 const Board = @import("Board.zig");
 const Button = @import("Button.zig");
 
@@ -15,6 +16,7 @@ const MONEY_FONT_SIZE = 22;
 const UPGRADE_FONT_SIZE = 44;
 const UPGRADE_DESC_FONT_SIZE = 22;
 const UPGRADE_COUNT_FONT_SIZE = 22;
+const SHOP_POLL_TIME = 0.2;
 
 const UPGRADE_PADDING = 5;
 
@@ -101,6 +103,21 @@ pub fn init(self: *Shop, bounds: rl.Rectangle) void {
     }
 }
 
+const WebPayload = extern struct {
+    processed_darts: usize,
+
+    shot_stats: extern struct {
+        darts_per_shot: u32,
+        aim_focus: f32,
+    },
+
+    monkey_stats: extern struct {
+        shots_per_second: f32,
+        darts_per_shot: u32,
+        aim_focus: f32,
+    },
+};
+
 pub fn update(self: *Shop, done: bool, board: *Board, bounds: rl.Rectangle, dt: f32) void {
     _ = bounds;
 
@@ -119,13 +136,22 @@ pub fn update(self: *Shop, done: bool, board: *Board, bounds: rl.Rectangle, dt: 
                     board.buyUpgrade(upgrade);
                     board.money -= @intCast(cost);
                     board.upgrade_counts.getPtr(upgrade).* += 1;
+
+                    const data: WebPayload = .{
+                        .processed_darts = board.processed_darts,
+                        .shot_stats = @bitCast(board.shot_stats),
+                        .monkey_stats = @bitCast(board.monkey_stats),
+                    };
+
+                    emasm.EM_ASM(
+                        \\const stringBytes = new Uint8Array(wasmMemory.buffer, $0, $1);
+                        \\shop_purchase(JSON.stringify(stringBytes));
+                    , .{ @as(*const anyopaque, &data), @as(i32, @sizeOf(WebPayload)) });
                 }
             }
         },
         .ai => |ai| {
             for (std.enums.values(Upgrade)) |upgrade| {
-                // const info = UPGRADE_DATA.getPtrConst(upgrade);
-
                 const cost = upgradeCost(board, upgrade);
                 if (cost > board.money)
                     continue;
@@ -137,10 +163,27 @@ pub fn update(self: *Shop, done: bool, board: *Board, bounds: rl.Rectangle, dt: 
                 }
             }
         },
-        .web => @panic("Todo"),
-    }
+        .web => {
+            board.player.web.poll_timer += dt;
+            if (board.player.web.poll_timer > 0.2) {
+                const data: WebPayload = undefined;
 
-    _ = dt;
+                emasm.EM_ASM(
+                    \\data = shop_sync();
+                    \\if (data.length == 0) return;
+                    \\const stringBytes = JSON.parse(data);
+                    \\const memoryView = new Uint8Array(wasmMemory.buffer, $0, $1);
+                    \\memoryView.set(stringBytes);
+                , .{ @as(*const anyopaque, &data), @as(i32, @sizeOf(WebPayload)) });
+
+                board.processed_darts = data.processed_darts;
+                board.shot_stats = @bitCast(data.shot_stats);
+                board.monkey_stats = @bitCast(data.monkey_stats);
+
+                board.player.web.poll_timer = 0.0;
+            }
+        },
+    }
 }
 
 pub fn draw(self: *const Shop, board: *const Board, bounds: rl.Rectangle) void {

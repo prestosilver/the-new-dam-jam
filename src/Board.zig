@@ -31,24 +31,26 @@ const Player = union(enum) {
         upgrade_rate: i32,
     },
     user,
-    web,
+    web: struct {
+        poll_timer: f32 = 0.0,
+    },
 };
 
-score: u32 = 301,
 font_size: f32 = 66,
 
 player: Player = .user,
 first_dart: usize = 0,
+processed_darts: usize = 0,
 thrown_darts: usize = 0,
 money: u32 = 0,
 
-shot_stats: struct {
+shot_stats: extern struct {
     darts_per_shot: u32 = 1,
     aim_focus: f32 = 200.0,
 } = .{},
 
 dart_monkey_timer: f64 = 0.0,
-monkey_stats: struct {
+monkey_stats: extern struct {
     shots_per_second: f32 = 0.0,
     darts_per_shot: u32 = 1,
     aim_focus: f32 = 1.0,
@@ -180,7 +182,7 @@ pub fn update(self: *Board, done: bool, bounds: rl.Rectangle, dt: f32) void {
                 self.throwDart(bounds, mouse_pos);
             }
         },
-        .web => @panic("Todo"),
+        .web => {},
     }
 }
 
@@ -241,7 +243,7 @@ pub fn draw(self: *const Board, done: bool, bounds: rl.Rectangle) void {
     const darts_text = std.fmt.bufPrintSentinel(
         &fmt_buf,
         "{:06}",
-        .{Board.MAX_DARTS - self.thrown_darts},
+        .{Board.MAX_DARTS - self.processed_darts},
         0,
     ) catch unreachable;
 
@@ -331,6 +333,7 @@ pub fn throwDart(self: *Board, bounds: rl.Rectangle, position: rl.Vector2) void 
         self.dart_fades[self.thrown_darts] = 1.0;
         self.dart_velocities[self.thrown_darts] = .{ .x = 0, .y = 0 };
         self.thrown_darts += 1;
+        self.processed_darts += 1;
     }
 }
 

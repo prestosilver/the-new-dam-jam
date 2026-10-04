@@ -76,16 +76,20 @@ fn setState(new_state: State) void {
 
             p1_board = .{ .player = .user, .font_size = 66 };
             if (practice_mode) {
+                // p2_board = .{
+                //     .player = .{ .ai = .{
+                //         .darts_per_second = 10,
+                //         .upgrade_rate = 1,
+                //     } },
+                //     .font_size = 25,
+                // };
                 p2_board = .{
-                    .player = .{ .ai = .{
-                        .darts_per_second = 10,
-                        .upgrade_rate = 1,
-                    } },
+                    .player = .{ .web = .{} },
                     .font_size = 25,
                 };
             } else {
                 p2_board = .{
-                    .player = .web,
+                    .player = .{ .web = .{} },
                     .font_size = 25,
                 };
             }
@@ -212,8 +216,8 @@ pub fn main(_: std.process.Init) !void {
         transition_timer += dt / 2.0;
         transition_timer = @min(1.0, transition_timer);
 
-        const done = p1_board.thrown_darts == Board.MAX_DARTS or
-            p2_board.thrown_darts == Board.MAX_DARTS;
+        const done = p1_board.processed_darts == Board.MAX_DARTS or
+            p2_board.processed_darts == Board.MAX_DARTS;
 
         update: {
             // update state

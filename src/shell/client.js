@@ -42,3 +42,21 @@ function poll_ready() {
 }
 
 /// Gameplay functions
+// This is called by the game when a shop purchase
+// is made it transmits things in a string value
+function shop_purchase(state) {
+    // This should return early if theres no running client
+    // it can be ran in practice mode.
+    
+    console.log("TODO: send shop data");
+}
+
+// This is called by the game every once in a
+// while, it should return the current shop state
+// of the opponent if it returns an empty string
+// it means no data has been sent from the opponent
+function shop_sync() {
+    console.log("TODO: sync shop data");
+
+    return "";
+}
