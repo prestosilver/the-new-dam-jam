@@ -4,3 +4,4 @@ zig-pkg
 .env
 .vscode
 **/db/generated
+client/node_modules
