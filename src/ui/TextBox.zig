@@ -1,3 +1,4 @@
+const emasm = @import("../emasm.zig");
 const rl = @import("raylib");
 const std = @import("std");
 
@@ -19,8 +20,12 @@ pub fn update(self: *TextBox) void {
     const mouse_pos = rl.getMousePosition();
 
     self.state.focused = rl.checkCollisionPointRec(mouse_pos, self.bounds);
-    if (rl.isMouseButtonPressed(.left))
+    if (rl.isMouseButtonPressed(.left)) {
         self.state.active = self.state.focused;
+        
+        if (self.state.focused)
+            emasm.EM_ASM("showKeyboard()", .{});
+    }
 
     if (self.state.active) {
         const ch: u8 = @intCast(@mod(rl.getCharPressed(), 256));
