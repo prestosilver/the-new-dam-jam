@@ -103,7 +103,7 @@ fn login(name: ?[]const u8, password: ?[4]u8) void {
                 \\if (data == null || data.length == 0) return 0;
                 \\const encoder = new TextEncoder();
                 \\const stringBytes = encoder.encode(data);
-                \\const memoryView = new Uint8Array(wasmMemory.buffer, $0, stringBytes.len);
+                \\const memoryView = new Uint8Array(wasmMemory.buffer, $0, stringBytes.length);
                 \\memoryView.set(stringBytes);
                 \\return stringBytes.length;
             , .{
@@ -127,7 +127,7 @@ fn login(name: ?[]const u8, password: ?[4]u8) void {
                 \\if (data == null || data.length == 0) return 0;
                 \\const encoder = new TextEncoder();
                 \\const stringBytes = encoder.encode(data);
-                \\const memoryView = new Uint8Array(wasmMemory.buffer, $0, stringBytes.len);
+                \\const memoryView = new Uint8Array(wasmMemory.buffer, $0, stringBytes.length);
                 \\memoryView.set(stringBytes);
                 \\return stringBytes.length;
             , .{
