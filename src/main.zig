@@ -72,7 +72,7 @@ var practice_mode: bool = false;
 
 var fmt_buf: [64]u8 = undefined;
 var fmt_buf_two: [64]u8 = undefined;
-var user_buf: [32]u8 = undefined;
+var user_buf: [12]u8 = undefined;
 var username: []u8 = "";
 
 var name_buf: [12]u8 = undefined;
@@ -142,9 +142,6 @@ fn login(name: ?[]const u8, password: ?[4]u8) void {
             username = user_buf[0..4];
         }
     }
-
-    if (username.len != 0)
-        return setState(.lobby);
 }
 
 fn setState(new_state: State) void {
@@ -152,6 +149,9 @@ fn setState(new_state: State) void {
         .loading => {},
         .login => {
             login(null, null);
+
+            if (username.len != 0)
+                return setState(.lobby);
         },
         .lobby => {
             lobby_state = .lobby;
