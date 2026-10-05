@@ -91,11 +91,31 @@
         oncontextmenu="event.preventDefault()"
         tabindex="-1"
       ></canvas>
+      <input
+        type="text"
+        id="keyboardProxy"
+        style="position: absolute; opacity: 0; pointer-events: none; top: 0; left: 0; width: 1px; height: 1px;"
+      ></input>
     </div>
     <script src="client.js"></script>
     <script type="text/javascript">
         var statusElement = document.getElementById('status');
         var canvasElement = document.getElementById('canvas');
+        var proxyInput = document.getElementById('keyboardProxy');
+
+        function showKeyboard(text) {
+            proxyInput.value = text;
+            proxyInput.focus();
+        };
+
+        proxyInput.addEventListener("input", function (e) {
+            var text = proxyInput.value;
+            for (let i = 0; i < text.length; i++ ) {
+                window.dispatchEvent(new KeyboardEvent('keydown', { key: text[i] }));
+                window.dispatchEvent(new KeyboardEvent('keypress', { key: text[i] }));
+            }
+            proxyInput.value = "";
+        });
 
         // As a default initial behavior, pop up an alert when webgl context is lost. To make your
         // application robust, you may want to override this behavior before shipping!
