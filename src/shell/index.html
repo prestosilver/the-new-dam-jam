@@ -122,11 +122,6 @@
         var Module = {
 #endif
             print(...args) {
-              // These replacements are necessary if you render to raw HTML
-              //text = text.replace(/&/g, "&amp;");
-              //text = text.replace(/</g, "&lt;");
-              //text = text.replace(/>/g, "&gt;");
-              //text = text.replace('\n', '<br>', 'g');
               console.log(...args);
             },
             canvas: canvasElement,
@@ -148,14 +143,7 @@
     {{{ SCRIPT }}}
 #if MODULARIZE && !EXPORT_ES6
     <script type="text/javascript">
-      {
-        {
-          {
-            EXPORT_NAME;
-          }
-        }
-      }
-      moduleArgs;
+      {{{ EXPORT_NAME }}}(moduleArgs);
     </script>
 #endif
   </body>
