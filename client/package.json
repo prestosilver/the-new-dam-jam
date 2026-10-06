@@ -10,6 +10,11 @@
   "keywords": [],
   "type": "module",
   "devDependencies": {
+    "typescript": "^5.7.3",
     "webpack-cli": "^7.2.3"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.8.4",
+    "ts-loader": "^9.6.2"
   }
 }
