@@ -1,6 +1,9 @@
 import { io } from "socket.io-client";
 
-const socket = io("https://games.samichamberlain.com/darts-2-million/");
+const socket = io("https://games.samichamberlain.com", {
+  path: "/darts-2-million/",
+  transports: ["websocket"],
+});
 
 //Global state
 //Login
