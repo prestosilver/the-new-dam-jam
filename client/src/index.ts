@@ -34,7 +34,9 @@ export function try_login(
   username: string | null,
   password: string | null,
 ): void {
-  if (username == null || username.length == 0) return;
+  if (username == null || username.length == 0)
+      return;
+
   login_done = false;
   socket.emit("login", { username, password }, (response: boolean) => {
     login_done = true;
@@ -43,8 +45,13 @@ export function try_login(
   });
 }
 
-export function poll_login(): boolean {
-  return login_valid;
+export function poll_login(): string {
+  if (login_done) {
+    login_done = false;
+    return login_name;
+  }
+
+  return "";
 }
 
 export function get_opponent_info() {

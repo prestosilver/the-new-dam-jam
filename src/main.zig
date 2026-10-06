@@ -98,18 +98,9 @@ fn login(name: ?[]const u8, password: ?[4]u8) void {
     username = "";
     if (name == null or password == null) {
         if (@import("builtin").target.os.tag == .emscripten) {
-            const len = emasm.EM_ASM_INT(
+            emasm.EM_ASM(
                 \\data = try_login(null, null);
-                \\if (data == null || data.length == 0) return 0;
-                \\const encoder = new TextEncoder();
-                \\const stringBytes = encoder.encode(data);
-                \\const memoryView = new Uint8Array(wasmMemory.buffer, $0, stringBytes.length);
-                \\memoryView.set(stringBytes);
-                \\return stringBytes.length;
-            , .{
-                @as(*const anyopaque, &user_buf),
-            });
-            username = user_buf[0..@intCast(len)];
+            , .{});
         } else {
             @memcpy(user_buf[0..4], "TEST");
             username = user_buf[0..4];
@@ -117,31 +108,41 @@ fn login(name: ?[]const u8, password: ?[4]u8) void {
     } else {
         if (@import("builtin").target.os.tag == .emscripten) {
             const tmp_password = password.?;
-            const len = emasm.EM_ASM_INT(
+            emasm.EM_ASM(
                 \\const decoder = new TextDecoder();
                 \\const nameBytes = new Uint8Array(wasmMemory.buffer, $1, $2);
                 \\const passBytes = new Uint8Array(wasmMemory.buffer, $3, 4);
                 \\const name = decoder.decode(nameBytes);
                 \\const pass = decoder.decode(passBytes);
                 \\data = try_login(name, pass);
-                \\if (data == null || data.length == 0) return 0;
-                \\const encoder = new TextEncoder();
-                \\const stringBytes = encoder.encode(data);
-                \\const memoryView = new Uint8Array(wasmMemory.buffer, $0, stringBytes.length);
-                \\memoryView.set(stringBytes);
-                \\return stringBytes.length;
             , .{
                 @as(*const anyopaque, &user_buf),
                 @as(*const anyopaque, name.?.ptr),
                 name.?.len,
                 @as(*const anyopaque, &tmp_password),
             });
-            username = user_buf[0..@intCast(len)];
         } else {
             @memcpy(user_buf[0..4], "TEST");
             username = user_buf[0..4];
         }
     }
+}
+
+fn pollLogin() bool {
+    const len = emasm.EM_ASM_INT(
+        \\data = poll_login();
+        \\if (data == null || data.length == 0) return 0;
+        \\const encoder = new TextEncoder();
+        \\const stringBytes = encoder.encode(data);
+        \\const memoryView = new Uint8Array(wasmMemory.buffer, $0, stringBytes.length);
+        \\memoryView.set(stringBytes);
+        \\return stringBytes.length;
+    , .{
+        @as(*const anyopaque, &user_buf),
+    });
+    username = user_buf[0..@intCast(len)];
+
+    return username.len > 0;
 }
 
 fn setState(new_state: State) void {
@@ -567,6 +568,14 @@ pub fn main(_: std.process.Init) !void {
 
                     if (login_button.isPressed() or rl.isKeyPressed(.enter)) {
                         login(login_box.getText(), pass_buf);
+                    }
+
+                    poll_timer += dt;
+                    if (poll_timer > POLL_INTERVAL) {
+                        if (pollLogin())
+                            setState(.lobby);
+
+                        poll_timer = 0.0;
                     }
                 },
                 .lobby => {
