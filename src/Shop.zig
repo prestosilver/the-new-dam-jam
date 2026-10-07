@@ -180,9 +180,6 @@ pub fn update(self: *Shop, done: bool, board: *Board, bounds: rl.Rectangle, dt: 
                     , .{ &data, @as(i32, @sizeOf(WebPayload)) }) == 0)
                         break :read;
 
-                    if (board.processed_darts != data.processed_darts)
-                        std.log.info("{any}", .{data});
-
                     board.processed_darts = data.processed_darts;
                     board.shot_stats = @bitCast(data.shot_stats);
                     board.monkey_stats = @bitCast(data.monkey_stats);
