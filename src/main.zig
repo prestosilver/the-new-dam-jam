@@ -2,15 +2,21 @@ const std = @import("std");
 const rl = @import("raylib");
 const build_options = @import("build_options");
 
+const Leaderboard = @import("ui/Leaderboard.zig");
 const PasswordBox = @import("ui/PasswordBox.zig");
 const TextBox = @import("ui/TextBox.zig");
 const Button = @import("ui/Button.zig");
+const Bar = @import("ui/Bar.zig");
+
 const Board = @import("Board.zig");
 const Shop = @import("Shop.zig");
 
+const mmr = @import("mmr.zig");
+
 const emasm = @import("emasm.zig");
 
-const RANKS = [_][:0]const u8{ "F", "D-", "D", "D+", "C-", "C", "C+", "B-", "B", "B+", "A-", "A", "A+", "A++", "S-", "S", "S+", "SS", "SS+", "SSS+" };
+const LEADERBOARD_LEN = 10;
+
 const BG_COLOR: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
 const USER_SIZE: rl.Vector2 = .{ .x = 700, .y = 100 };
 const PLAY_SIZE: rl.Vector2 = .{ .x = 500, .y = 150 };
@@ -18,10 +24,13 @@ const LOGIN_SIZE: rl.Vector2 = .{ .x = 400, .y = 100 };
 const PASS_SIZE: rl.Vector2 = .{ .x = 100, .y = 200 };
 const CONTINUE_SIZE: rl.Vector2 = .{ .x = 550, .y = 150 };
 const PRACTICE_SIZE: rl.Vector2 = .{ .x = 250, .y = 75 };
+const LEVEL_BAR_SIZE: rl.Vector2 = .{ .x = 700, .y = 100 };
 const P2_SIZE = 150;
 const SHOP_WIDTH = 450;
 const UI_PAD = 50;
 const POLL_INTERVAL = 0.2;
+
+const LEADERBOARD_HEIGHT = (build_options.SCREEN_HEIGHT - UI_PAD - PLAY_SIZE.y) / @as(f32, @floatFromInt(LEADERBOARD_LEN));
 
 fn customLogFn(
     comptime level: std.log.Level,
@@ -62,8 +71,7 @@ var p1_board: Board = .{};
 var p2_board: Board = .{};
 
 var shop: Shop = .{};
-var mms: u32 = 0;
-var render_mms: f32 = 0;
+var mmr_value: u32 = 0;
 var wait_timer: f32 = 0.0;
 var poll_timer: f32 = 0.0;
 var game_begin: f32 = 3.0;
@@ -71,7 +79,6 @@ var game_begin: f32 = 3.0;
 var practice_mode: bool = false;
 
 var fmt_buf: [64]u8 = undefined;
-var fmt_buf_two: [64]u8 = undefined;
 var user_buf: [12]u8 = undefined;
 var username: []u8 = "";
 
@@ -93,6 +100,11 @@ var p2_bounds: rl.Rectangle = undefined;
 var shop_bounds: rl.Rectangle = undefined;
 
 var game_started: bool = false;
+
+var leaderboard_entries: [LEADERBOARD_LEN]Leaderboard.Entry = [_]Leaderboard.Entry{.{}} ** LEADERBOARD_LEN;
+var leaderboard: [LEADERBOARD_LEN]Leaderboard = undefined;
+
+var level_bar: Bar = undefined;
 
 fn login(name: ?[]const u8, password: ?[4]u8) void {
     username = "";
@@ -187,27 +199,11 @@ fn setState(new_state: State) void {
         transition_timer = 0.0;
 }
 
-fn getRank(score: u64, buf: []u8) [:0]const u8 {
-    const idx = @divFloor(score, 1000);
-
-    if (idx < RANKS.len)
-        return RANKS[@intCast(idx)];
-
-    return std.fmt.bufPrintSentinel(
-        buf,
-        RANKS[RANKS.len - 1] ++ "{d}",
-        .{idx - RANKS.len + 1},
-        0,
-    ) catch unreachable;
-}
-
 fn playClick() void {
     switch (lobby_state) {
         .lobby => {
             lobby_state = .ready;
             wait_timer = 0.0;
-
-            mms = @intCast(emasm.EM_ASM_INT("return get_score();", .{}));
 
             // queue match
             emasm.EM_ASM("join_match()", .{});
@@ -230,7 +226,7 @@ fn playClick() void {
 fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
     rl.beginMode2D(.{
         .offset = offset,
-        .target = undefined,
+        .target = .{ .x = 0, .y = 0 },
         .rotation = 0,
         .zoom = 1.0,
     });
@@ -274,13 +270,12 @@ fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
             const practice_text = if (practice_mode) "Practice" else "PVP";
             practice_button.draw(practice_text);
             leaderboard_button.draw("Leaders");
+            level_bar.draw();
 
             if (!debug_text) return;
 
             // Debug draw
-            const visible_mms: u64 = @intFromFloat(render_mms);
-
-            const rank_score = @mod(visible_mms, 1000);
+            const rank_score = @mod(mmr_value, mmr.RANK_STEP);
             rl.drawRectangleRec(.{
                 .x = 0,
                 .y = @floatFromInt(y),
@@ -290,7 +285,7 @@ fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
             rl.drawRectangleRec(.{
                 .x = 0,
                 .y = @floatFromInt(y),
-                .width = 500 * (@as(f32, @floatFromInt(rank_score)) / 1000.0),
+                .width = 500 * (@as(f32, @floatFromInt(rank_score)) / mmr.RANK_STEP),
                 .height = 50,
             }, .white);
             y += 50;
@@ -313,14 +308,14 @@ fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
             rl.drawText(user_state_text, 0, y, 22, .white);
             y += 22;
 
-            const rank_text = getRank(visible_mms, &fmt_buf_two);
-            const mms_text = std.fmt.bufPrintSentinel(
+            const rank_text = mmr.getRank(mmr_value);
+            const mmr_text = std.fmt.bufPrintSentinel(
                 &fmt_buf,
                 "score r: {s} v: {d} x: {d}",
-                .{ rank_text, visible_mms, rank_score },
+                .{ rank_text, mmr_value, rank_score },
                 0,
             ) catch unreachable;
-            rl.drawText(mms_text, 0, y, 22, .white);
+            rl.drawText(mmr_text, 0, y, 22, .white);
             y += 22;
         },
         .game => {
@@ -410,8 +405,13 @@ fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
         },
         .end => {
             continue_button.draw("Return");
+            level_bar.draw();
         },
         .leaderboard => {
+            for (leaderboard) |entry| {
+                entry.draw();
+            }
+
             back_button.draw("Back");
         },
     }
@@ -430,8 +430,6 @@ pub fn main(_: std.process.Init) !void {
     setState(.login);
 
     transition_timer = 1.0;
-
-    render_mms = @floatFromInt(mms);
 
     //rl.hideCursor();
 
@@ -506,6 +504,18 @@ pub fn main(_: std.process.Init) !void {
         .text_size = PLAY_SIZE.y - 20,
     };
 
+    level_bar = .{
+        .bounds = .{
+            .x = (build_options.SCREEN_WIDTH - LEVEL_BAR_SIZE.x) * 0.5,
+            .y = (build_options.SCREEN_HEIGHT - LEVEL_BAR_SIZE.y) * 0.5,
+            .width = LEVEL_BAR_SIZE.x,
+            .height = LEVEL_BAR_SIZE.y,
+        },
+        .target = @floatFromInt(mmr_value),
+        .value = @floatFromInt(mmr_value),
+        .step = mmr.RANK_STEP,
+    };
+
     continue_button = .{
         .bounds = .{
             .x = (build_options.SCREEN_WIDTH - CONTINUE_SIZE.x) * 0.5,
@@ -546,7 +556,46 @@ pub fn main(_: std.process.Init) !void {
         .text_size = PRACTICE_SIZE.y - 20,
     };
 
+    for (&leaderboard, &leaderboard_entries, 0..) |*render, *value, idx| {
+        render.* = .{
+            .bounds = .{
+                .x = UI_PAD,
+                .y = UI_PAD + LEADERBOARD_HEIGHT * @as(f32, @floatFromInt(idx)),
+                .width = build_options.SCREEN_WIDTH - PRACTICE_SIZE.x,
+                .height = LEADERBOARD_HEIGHT - 5,
+            },
+            .entry = value,
+        };
+    }
+
     shop.init(shop_bounds);
+
+    // Register the set_leaderboard function
+    emasm.EM_ASM(
+        \\set_leaderboard = function (idx, name, mmr) {
+        \\    if (name.length > 15) throw new Error("name " + name + " is too long for set_leaderboard");
+        \\    const tmp_name = name + "\0";
+        \\    const object_start = $0 + idx * $1;
+        \\    const encoder = new TextEncoder();
+        \\    const stringBytes = encoder.encode(tmp_name);
+        \\    const entryBytes = new Uint8Array(wasmMemory.buffer, object_start + $3, stringBytes.length);
+        \\    entryBytes.set(stringBytes);
+        \\    const view = new DataView(wasmMemory.buffer);
+        \\    view.setInt32(object_start + $4, mmr, true); 
+        \\    view.setUint8(object_start + $2, 1, true); 
+        \\}
+        \\unset_leaderboard = function (idx) {
+        \\    const object_start = $0 + idx * $1;
+        \\    const view = new DataView(wasmMemory.buffer);
+        \\    view.setUint8(object_start + $2, 0, true); 
+        \\}
+    , .{
+        &leaderboard_entries,
+        @intFromPtr(&leaderboard_entries[1]) - @intFromPtr(&leaderboard_entries[0]),
+        @as(i32, @intCast(@offsetOf(Leaderboard.Entry, "valid"))), // $2
+        @as(i32, @intCast(@offsetOf(Leaderboard.Entry, "name"))), // $3
+        @as(i32, @intCast(@offsetOf(Leaderboard.Entry, "mmr"))), // $4
+    });
 
     while (!rl.windowShouldClose()) {
         const dt = rl.getFrameTime();
@@ -579,25 +628,16 @@ pub fn main(_: std.process.Init) !void {
                     }
                 },
                 .lobby => {
-                    const render_mms_int = @as(u32, @intFromFloat(render_mms));
-                    if (render_mms_int < mms) {
-                        const diff: f32 = @floatFromInt(@divFloor(mms, 100) - @divFloor(render_mms_int, 100));
-
-                        render_mms += (500 + 100 * diff) * dt;
-                        render_mms = @min(render_mms, @as(f32, @floatFromInt(mms)));
-                    }
-
-                    if (render_mms_int > mms) {
-                        const diff: f32 = @floatFromInt(@divFloor(render_mms_int, 100) - @divFloor(mms, 100));
-
-                        render_mms -= @min(render_mms, (400 + 50 * diff) * dt);
-                    }
-
                     {
+                        if (std.math.cast(u32, emasm.EM_ASM_INT("return get_score();", .{}))) |new_value|
+                            mmr_value = new_value;
+                        level_bar.target = @floatFromInt(mmr_value);
+
                         // Play button logic
                         play_button.update();
                         practice_button.update();
                         leaderboard_button.update();
+                        level_bar.update(dt);
 
                         if (play_button.isPressed())
                             playClick();
@@ -673,6 +713,11 @@ pub fn main(_: std.process.Init) !void {
                     shop.update(game_done, &p2_board, shop_bounds, dt);
                 },
                 .end => {
+                    if (std.math.cast(u32, emasm.EM_ASM_INT("return get_score();", .{}))) |new_value|
+                        mmr_value = new_value;
+                    level_bar.target = @floatFromInt(mmr_value);
+
+                    level_bar.update(dt);
                     continue_button.update();
                     if (continue_button.isPressed())
                         setState(.lobby);

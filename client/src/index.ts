@@ -5,13 +5,16 @@ const socket = io("https://games.samichamberlain.com", {
   transports: ["websocket"],
 });
 
-//Global state
+declare function set_leaderboard(list_index: number, name: string, mmr: number): void;
+declare function unset_leaderboard(list_index: number): void;
+
+///Global state
 //Login
 let login_done: boolean = false;
 let login_valid: boolean = false;
 let login_name: string = "";
 //score
-let score: number = -1;
+let score: number = 0;
 
 //opponent info
 let opponent_name: string = "";
@@ -22,6 +25,9 @@ let match_ready: boolean = false;
 
 //shop
 let opponent_shop_data: string = "";
+
+let leaderboard_start: number = 0;
+let leaderboard_count: number = 0;
 
 /// Login functions
 
@@ -36,7 +42,7 @@ export function try_login(
 ): void {
   if (username == null || username.length == 0)
       return;
-
+  
   login_done = false;
   socket.emit("login", { username, password }, (response: boolean) => {
     login_done = true;
@@ -118,6 +124,17 @@ export function shop_sync() {
   return opponent_shop_data;
 }
 
+// Requests leaderboard page
+export function leaderboard_page(start: number, count: number) {
+  leaderboard_start = start;
+  leaderboard_count = count;
+  for (let i = 0; i < count; i++)
+    unset_leaderboard(start + i);
+
+  socket.emit("leaderboard:request", {start, count});
+}
+
+
 // Socket Listeners -- server responses are in args
 
 //Matchmaking
@@ -141,4 +158,11 @@ socket.on("score:get", (s: number) => {
 //opponent shop
 socket.on("shop:sync", (state: string) => {
   opponent_shop_data = state;
+});
+
+//opponent shop
+socket.on("leaderboard:value", (index: number, name: string, mmr: number) => {
+  // if user is paging fast this will 
+  if (index >= leaderboard_start && index < leaderboard_start + leaderboard_count)
+    set_leaderboard(index - leaderboard_start, name, mmr);
 });
