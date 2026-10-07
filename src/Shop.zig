@@ -103,7 +103,10 @@ pub fn init(self: *Shop, bounds: rl.Rectangle) void {
     }
 }
 
+var web_idx: usize = 0;
+
 const WebPayload = extern struct {
+    payload_idx: usize,
     processed_darts: usize,
 
     shot_stats: extern struct {
@@ -137,7 +140,10 @@ pub fn update(self: *Shop, done: bool, board: *Board, bounds: rl.Rectangle, dt: 
                     board.money -= @intCast(cost);
                     board.upgrade_counts.getPtr(upgrade).* += 1;
 
+                    web_idx += 1;
+
                     const data: WebPayload = .{
+                        .payload_idx = web_idx,
                         .processed_darts = board.processed_darts,
                         .shot_stats = @bitCast(board.shot_stats),
                         .monkey_stats = @bitCast(board.monkey_stats),
@@ -180,9 +186,13 @@ pub fn update(self: *Shop, done: bool, board: *Board, bounds: rl.Rectangle, dt: 
                     , .{ &data, @as(i32, @sizeOf(WebPayload)) }) == 0)
                         break :read;
 
+                    if (data.payload_idx <= board.player.web.last_sync)
+                        break :read;
+
+                    board.player.web.last_sync = data.payload_idx;
                     board.processed_darts = data.processed_darts;
-                    board.shot_stats = @bitCast(data.shot_stats);
                     board.monkey_stats = @bitCast(data.monkey_stats);
+                    board.shot_stats = @bitCast(data.shot_stats);
                 }
 
                 board.player.web.poll_timer = 0.0;

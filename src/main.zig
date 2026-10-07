@@ -682,8 +682,6 @@ pub fn main(_: std.process.Init) !void {
                             setState(.game);
                     }
 
-                    if (!debug_web) break :update;
-
                     // debug update
                     if (lobby_state == .ready) {
                         if (rl.isKeyPressed(.b)) {
@@ -694,6 +692,8 @@ pub fn main(_: std.process.Init) !void {
                             setState(.game);
                         }
                     }
+
+                    if (!debug_web) break :update;
                 },
                 .game => {
                     if (game_done) {

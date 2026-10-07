@@ -32,6 +32,7 @@ const Player = union(enum) {
     },
     user,
     web: struct {
+        last_sync: usize = 0,
         poll_timer: f32 = 0.0,
     },
 };
