@@ -146,7 +146,7 @@ pub fn update(self: *Shop, done: bool, board: *Board, bounds: rl.Rectangle, dt: 
                     emasm.EM_ASM(
                         \\const stringBytes = new Uint8Array(wasmMemory.buffer, $0, $1);
                         \\shop_purchase(JSON.stringify(stringBytes));
-                    , .{ @as(*const anyopaque, &data), @as(i32, @sizeOf(WebPayload)) });
+                    , .{ &data, @as(i32, @sizeOf(WebPayload)) });
                 }
             }
         },
@@ -166,19 +166,27 @@ pub fn update(self: *Shop, done: bool, board: *Board, bounds: rl.Rectangle, dt: 
         .web => {
             board.player.web.poll_timer += dt;
             if (board.player.web.poll_timer > 0.2) {
-                const data: WebPayload = undefined;
+                read: {
+                    var data: WebPayload = undefined;
 
-                emasm.EM_ASM(
-                    \\data = shop_sync();
-                    \\if (data.length == 0) return;
-                    \\const stringBytes = JSON.parse(data);
-                    \\const memoryView = new Uint8Array(wasmMemory.buffer, $0, $1);
-                    \\memoryView.set(stringBytes);
-                , .{ @as(*const anyopaque, &data), @as(i32, @sizeOf(WebPayload)) });
+                    if (emasm.EM_ASM_INT(
+                        \\data = shop_sync();
+                        \\if (data.length < 1) return 0;
+                        \\const stringData = JSON.parse(data);
+                        \\const stringBytes = new Uint8Array(Object.values(stringData));
+                        \\const memoryView = new Uint8Array(wasmMemory.buffer, $0, $1);
+                        \\memoryView.set(stringBytes);
+                        \\return 1;
+                    , .{ &data, @as(i32, @sizeOf(WebPayload)) }) == 0)
+                        break :read;
 
-                board.processed_darts = data.processed_darts;
-                board.shot_stats = @bitCast(data.shot_stats);
-                board.monkey_stats = @bitCast(data.monkey_stats);
+                    if (board.processed_darts != data.processed_darts)
+                        std.log.info("{any}", .{data});
+
+                    board.processed_darts = data.processed_darts;
+                    board.shot_stats = @bitCast(data.shot_stats);
+                    board.monkey_stats = @bitCast(data.monkey_stats);
+                }
 
                 board.player.web.poll_timer = 0.0;
             }

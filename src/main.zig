@@ -94,6 +94,7 @@ var continue_button: Button = undefined;
 var practice_button: Button = undefined;
 var back_button: Button = undefined;
 var leaderboard_button: Button = undefined;
+var leaderboard_page: i32 = 0;
 
 var p1_bounds: rl.Rectangle = undefined;
 var p2_bounds: rl.Rectangle = undefined;
@@ -190,7 +191,13 @@ fn setState(new_state: State) void {
             }
         },
         .end => {},
-        .leaderboard => {},
+        .leaderboard => {
+            leaderboard_page = 0;
+            emasm.EM_ASM("leaderboard_page($0, $1)", .{
+                LEADERBOARD_LEN * leaderboard_page,
+                @as(i32, LEADERBOARD_LEN),
+            });
+        },
     }
 
     last_state = state;
