@@ -1,6 +1,7 @@
 const std = @import("std");
 const rl = @import("raylib");
-const mmr = @import("../mmr.zig");
+
+const util = @import("../util.zig");
 
 const TEXT_COLOR: rl.Color = .{ .r = 255, .g = 255, .b = 255, .a = 255 };
 
@@ -18,20 +19,28 @@ const Leaderboard = @This();
 pub fn draw(self: *const Leaderboard) void {
     if (!self.entry.valid) return;
 
-    rl.drawText(
+    rl.drawTextEx(
+        util.font,
         &self.entry.name,
-        @intFromFloat(self.bounds.x),
-        @intFromFloat(self.bounds.y),
-        @intFromFloat(self.bounds.height),
+        .{
+            .x = self.bounds.x,
+            .y = self.bounds.y,
+        },
+        self.bounds.height,
+        0,
         TEXT_COLOR,
     );
 
-    const score_text = mmr.getRank(self.entry.mmr);
-    rl.drawText(
+    const score_text = util.getRank(self.entry.mmr);
+    rl.drawTextEx(
+        util.font,
         score_text,
-        @intFromFloat(self.bounds.x + 500),
-        @intFromFloat(self.bounds.y),
-        @intFromFloat(self.bounds.height),
+        .{
+            .x = self.bounds.x + 500,
+            .y = self.bounds.y,
+        },
+        self.bounds.height,
+        0,
         TEXT_COLOR,
     );
 }

@@ -2,6 +2,8 @@ const emasm = @import("../emasm.zig");
 const rl = @import("raylib");
 const std = @import("std");
 
+const util = @import("../util.zig");
+
 const DEFAULT_COLOR: rl.Color = .{ .r = 0, .g = 148, .b = 121, .a = 255 };
 const HOVER_COLOR: rl.Color = .{ .r = 9, .g = 219, .b = 47, .a = 255 };
 const TEXT_COLOR: rl.Color = .black;
@@ -11,7 +13,7 @@ state: packed struct {
     active: bool = false,
 } = .{},
 bounds: rl.Rectangle,
-text_size: i32,
+text_size: f32,
 text: std.ArrayList(u8),
 
 const TextBox = @This();
@@ -22,7 +24,7 @@ pub fn update(self: *TextBox) void {
     self.state.focused = rl.checkCollisionPointRec(mouse_pos, self.bounds);
     if (rl.isMouseButtonPressed(.left)) {
         self.state.active = self.state.focused;
-        
+
         if (self.state.focused)
             emasm.EM_ASM("showKeyboard()", .{});
     }
@@ -53,11 +55,15 @@ pub fn draw(self: *const TextBox) void {
         0,
     ) catch unreachable;
 
-    rl.drawText(
+    rl.drawTextEx(
+        util.font,
         text,
-        @intFromFloat(self.bounds.x + 5),
-        @intFromFloat(self.bounds.y + (self.bounds.height - @as(f32, @floatFromInt(self.text_size))) * 0.5),
+        .{
+            .x = self.bounds.x + 10,
+            .y = self.bounds.y + (self.bounds.height - self.text_size) * 0.5,
+        },
         self.text_size,
+        0,
         TEXT_COLOR,
     );
 }

@@ -1,5 +1,6 @@
 const rl = @import("raylib");
 const std = @import("std");
+const util = @import("../util.zig");
 
 const PasswordBox = @This();
 
@@ -19,7 +20,7 @@ state: packed struct {
     bot_disabled: bool = false,
 } = .{},
 bounds: rl.Rectangle,
-text_size: i32,
+text_size: f32,
 char: *u8,
 
 pub fn update(self: *PasswordBox) void {
@@ -28,7 +29,7 @@ pub fn update(self: *PasswordBox) void {
 
     const mouse_pos = rl.getMousePosition();
 
-    const extra = (self.bounds.height - @as(f32, @floatFromInt(self.text_size))) * 0.5;
+    const extra = (self.bounds.height - self.text_size) * 0.5;
 
     top: {
         const top_bounds = rl.Rectangle{
@@ -89,9 +90,9 @@ pub fn update(self: *PasswordBox) void {
 
 pub fn draw(self: *PasswordBox) void {
     const text = [_:0]u8{self.char.*};
-    const text_width: f32 = @floatFromInt(rl.measureText(&text, self.text_size));
+    const text_width: f32 = rl.measureTextEx(util.font, &text, self.text_size, 0).x;
 
-    const extra = (self.bounds.height - @as(f32, @floatFromInt(self.text_size))) * 0.5;
+    const extra = (self.bounds.height - self.text_size) * 0.5;
 
     rl.drawRectangleRec(.{
         .x = self.bounds.x + 5,
@@ -121,11 +122,15 @@ pub fn draw(self: *PasswordBox) void {
     else
         BUTTON_COLOR);
 
-    rl.drawText(
+    rl.drawTextEx(
+        util.font,
         &text,
-        @intFromFloat(self.bounds.x + (self.bounds.width - text_width) * 0.5),
-        @intFromFloat(self.bounds.y + (self.bounds.height - @as(f32, @floatFromInt(self.text_size))) * 0.5),
+        .{
+            .x = self.bounds.x + (self.bounds.width - text_width) * 0.5,
+            .y = self.bounds.y + (self.bounds.height - self.text_size) * 0.5,
+        },
         self.text_size,
+        0,
         TEXT_COLOR,
     );
 }

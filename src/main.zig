@@ -11,7 +11,7 @@ const Bar = @import("ui/Bar.zig");
 const Board = @import("Board.zig");
 const Shop = @import("Shop.zig");
 
-const mmr = @import("mmr.zig");
+const util = @import("util.zig");
 
 const emasm = @import("emasm.zig");
 
@@ -24,7 +24,7 @@ const LOGIN_SIZE: rl.Vector2 = .{ .x = 400, .y = 100 };
 const PASS_SIZE: rl.Vector2 = .{ .x = 100, .y = 200 };
 const CONTINUE_SIZE: rl.Vector2 = .{ .x = 550, .y = 150 };
 const PRACTICE_SIZE: rl.Vector2 = .{ .x = 250, .y = 75 };
-const LEVEL_BAR_SIZE: rl.Vector2 = .{ .x = 700, .y = 100 };
+const LEVEL_BAR_SIZE: rl.Vector2 = .{ .x = 700, .y = 96 };
 const P2_SIZE = 150;
 const SHOP_WIDTH = 450;
 const UI_PAD = 50;
@@ -282,7 +282,7 @@ fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
             if (!debug_text) return;
 
             // Debug draw
-            const rank_score = @mod(mmr_value, mmr.RANK_STEP);
+            const rank_score = @mod(mmr_value, util.RANK_STEP);
             rl.drawRectangleRec(.{
                 .x = 0,
                 .y = @floatFromInt(y),
@@ -292,7 +292,7 @@ fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
             rl.drawRectangleRec(.{
                 .x = 0,
                 .y = @floatFromInt(y),
-                .width = 500 * (@as(f32, @floatFromInt(rank_score)) / mmr.RANK_STEP),
+                .width = 500 * (@as(f32, @floatFromInt(rank_score)) / util.RANK_STEP),
                 .height = 50,
             }, .white);
             y += 50;
@@ -315,7 +315,7 @@ fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
             rl.drawText(user_state_text, 0, y, 22, .white);
             y += 22;
 
-            const rank_text = mmr.getRank(mmr_value);
+            const rank_text = util.getRank(mmr_value);
             const mmr_text = std.fmt.bufPrintSentinel(
                 &fmt_buf,
                 "score r: {s} v: {d} x: {d}",
@@ -440,10 +440,13 @@ pub fn main(_: std.process.Init) !void {
 
     //rl.hideCursor();
 
-    Board.board_texture = try rl.loadTexture("board.png");
+    Board.board_texture = try .init("board.png");
     defer Board.board_texture.unload();
 
-    Board.background_texture = try rl.loadTexture("background.png");
+    util.font = try .initEx("HopeGold.ttf", 128, null);
+    defer util.font.unload();
+
+    Board.background_texture = try .init("background.png");
     defer Board.background_texture.unload();
 
     const board_width = (build_options.SCREEN_WIDTH - SHOP_WIDTH);
@@ -520,7 +523,7 @@ pub fn main(_: std.process.Init) !void {
         },
         .target = @floatFromInt(mmr_value),
         .value = @floatFromInt(mmr_value),
-        .step = mmr.RANK_STEP,
+        .step = util.RANK_STEP,
     };
 
     continue_button = .{

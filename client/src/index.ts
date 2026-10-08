@@ -111,8 +111,6 @@ export function poll_ready() {
 // This is called by the game when a shop purchase
 // is made it transmits things in a string value
 export function shop_purchase(state: string) {
-  if (!match_ready) return;
-
   socket.emit("shop:send", state);
 }
 

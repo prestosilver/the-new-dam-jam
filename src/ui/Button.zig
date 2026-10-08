@@ -1,5 +1,7 @@
 const rl = @import("raylib");
 
+const util = @import("../util.zig");
+
 pub const BUTTON_COLOR: rl.Color = .{ .r = 0, .g = 148, .b = 121, .a = 255 };
 pub const BUTTON_HOVER_COLOR: rl.Color = .{ .r = 9, .g = 219, .b = 47, .a = 255 };
 pub const BUTTON_CLICK_COLOR: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
@@ -14,7 +16,7 @@ state: packed struct {
     pressed: bool = false,
 } = .{},
 bounds: rl.Rectangle,
-text_size: i32,
+text_size: f32,
 
 const Button = @This();
 
@@ -47,7 +49,7 @@ pub fn isPressed(self: *const Button) bool {
 }
 
 pub fn draw(self: *const Button, text: [:0]const u8) void {
-    const text_width: f32 = @floatFromInt(rl.measureText(text, self.text_size));
+    const text_width: f32 = rl.measureTextEx(util.font, text, self.text_size, 0).x;
 
     rl.drawRectangleRounded(self.bounds, 0.2, 10, if (self.state.disabled)
         BUTTON_DISABLED_COLOR
@@ -58,11 +60,15 @@ pub fn draw(self: *const Button, text: [:0]const u8) void {
     else
         BUTTON_COLOR);
 
-    rl.drawText(
+    rl.drawTextEx(
+        util.font,
         text,
-        @intFromFloat(self.bounds.x + (self.bounds.width - text_width) * 0.5),
-        @intFromFloat(self.bounds.y + (self.bounds.height - @as(f32, @floatFromInt(self.text_size))) * 0.5),
+        .{
+            .x = self.bounds.x + (self.bounds.width - text_width) * 0.5,
+            .y = self.bounds.y + (self.bounds.height - self.text_size) * 0.5,
+        },
         self.text_size,
+        0,
         TEXT_COLOR,
     );
 }

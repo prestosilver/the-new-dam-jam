@@ -1,6 +1,8 @@
 const std = @import("std");
 const rl = @import("raylib");
 
+const util = @import("../util.zig");
+
 const BACKGROUND_COLOR: rl.Color = .{ .r = 0, .g = 148, .b = 121, .a = 255 };
 const FILL_COLOR: rl.Color = .{ .r = 9, .g = 219, .b = 47, .a = 255 };
 
@@ -63,11 +65,15 @@ pub fn draw(self: *const Bar) void {
         .{@as(i32, @intFromFloat(fill_pc * 100))},
         0,
     ) catch unreachable;
-    rl.drawText(
+    rl.drawTextEx(
+        util.font,
         text,
-        @intFromFloat(self.bounds.x + 5),
-        @intFromFloat(self.bounds.y),
-        @intFromFloat(self.bounds.height),
+        .{
+            .x = self.bounds.x + 5,
+            .y = self.bounds.y,
+        },
+        self.bounds.height,
+        0,
         TEXT_COLOR,
     );
 }
