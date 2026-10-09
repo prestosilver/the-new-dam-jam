@@ -174,7 +174,7 @@ fn setState(new_state: State) void {
             game_started = true;
             game_begin = 3.0;
 
-            p1_board = .{ .player = .user, .font_size = 66 };
+            p1_board = .{ .player = .{ .user = .{} }, .font_size = 66 };
             if (practice_mode) {
                 p2_board = .{
                     .player = .{ .ai = .{

@@ -2,6 +2,8 @@ const rl = @import("raylib");
 const std = @import("std");
 const build_options = @import("build_options");
 
+const emasm = @import("emasm.zig");
+
 const Shop = @import("Shop.zig");
 
 pub const MAX_DARTS = 1_000_000;
@@ -30,7 +32,9 @@ const Player = union(enum) {
         darts_per_second: f32,
         upgrade_rate: i32,
     },
-    user,
+    user: struct {
+        send_timer: f32 = 0.0,
+    },
     web: struct {
         last_sync: usize = 0,
         poll_timer: f32 = 0.0,
@@ -39,7 +43,7 @@ const Player = union(enum) {
 
 font_size: f32 = 66,
 
-player: Player = .user,
+player: Player = .{ .user = .{} },
 first_dart: usize = 0,
 processed_darts: usize = 0,
 thrown_darts: usize = 0,
@@ -116,6 +120,15 @@ pub fn update(self: *Board, done: bool, bounds: rl.Rectangle, dt: f32) void {
     // darts dont throw at the end of the game
     if (done)
         return;
+
+    if (self.player == .user) {
+        self.player.user.send_timer += dt;
+        if (self.player.user.send_timer > 0.25) {
+            self.shopSend();
+
+            self.player.user.send_timer = 0;
+        }
+    }
 
     // monkey logic
     {
@@ -358,4 +371,22 @@ pub fn buyUpgrade(self: *Board, upgrade: Shop.Upgrade) void {
             self.monkey_stats.darts_per_shot += 1;
         },
     }
+}
+
+var web_idx: usize = 0;
+
+pub fn shopSend(board: *const Board) void {
+    const data: Shop.WebPayload = .{
+        .payload_idx = web_idx,
+        .processed_darts = board.processed_darts,
+        .shot_stats = @bitCast(board.shot_stats),
+        .monkey_stats = @bitCast(board.monkey_stats),
+    };
+
+    emasm.EM_ASM(
+        \\const stringBytes = new Uint8Array(wasmMemory.buffer, $0, $1);
+        \\shop_purchase(JSON.stringify(stringBytes));
+    , .{ &data, @as(i32, @sizeOf(Shop.WebPayload)) });
+
+    web_idx += 1;
 }

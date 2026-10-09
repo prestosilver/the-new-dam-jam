@@ -103,9 +103,7 @@ pub fn init(self: *Shop, bounds: rl.Rectangle) void {
     }
 }
 
-var web_idx: usize = 0;
-
-const WebPayload = extern struct {
+pub const WebPayload = extern struct {
     payload_idx: usize,
     processed_darts: usize,
 
@@ -140,19 +138,7 @@ pub fn update(self: *Shop, done: bool, board: *Board, bounds: rl.Rectangle, dt: 
                     board.money -= @intCast(cost);
                     board.upgrade_counts.getPtr(upgrade).* += 1;
 
-                    web_idx += 1;
-
-                    const data: WebPayload = .{
-                        .payload_idx = web_idx,
-                        .processed_darts = board.processed_darts,
-                        .shot_stats = @bitCast(board.shot_stats),
-                        .monkey_stats = @bitCast(board.monkey_stats),
-                    };
-
-                    emasm.EM_ASM(
-                        \\const stringBytes = new Uint8Array(wasmMemory.buffer, $0, $1);
-                        \\shop_purchase(JSON.stringify(stringBytes));
-                    , .{ &data, @as(i32, @sizeOf(WebPayload)) });
+                    board.shopSend();
                 }
             }
         },
