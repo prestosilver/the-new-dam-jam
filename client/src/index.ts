@@ -5,6 +5,8 @@ const socket = io("https://games.samichamberlain.com", {
   transports: ["websocket"],
 });
 
+/// functions defined in main.zig (search function)
+declare function set_score(name: number): void;
 declare function set_opponent(name: string): void;
 declare function set_leaderboard(list_index: number, name: string, mmr: number): void;
 declare function unset_leaderboard(list_index: number): void;
@@ -14,8 +16,6 @@ declare function unset_leaderboard(list_index: number): void;
 let login_done: boolean = false;
 let login_valid: boolean = false;
 let login_name: string = "";
-//score
-let score: number = 0;
 
 //matchmaking
 let match_found: boolean = false;
@@ -23,9 +23,6 @@ let match_ready: boolean = false;
 
 //shop
 let opponent_shop_data: string = "";
-
-let leaderboard_start: number = 0;
-let leaderboard_count: number = 0;
 
 /// Login functions
 
@@ -60,12 +57,6 @@ export function poll_login(): string {
 }
 
 /// Match joining functions
-
-// gets the current players match making score
-// and rank
-export function get_score() {
-  return score;
-}
 
 // try and join a match, should be proceeded by
 // poll_match eventually returning true
@@ -119,6 +110,9 @@ export function shop_sync() {
   return opponent_shop_data;
 }
 
+let leaderboard_start: number = 0;
+let leaderboard_count: number = 0;
+
 // Requests leaderboard page
 export function leaderboard_page(start: number, count: number) {
   leaderboard_start = start;
@@ -161,8 +155,8 @@ socket.on("opponent:get", (name: string) => {
 });
 
 //Score
-socket.on("score:get", (s: number) => {
-  score = s;
+socket.on("score:get", (score: number) => {
+    set_score(score);
 });
 
 //opponent shop

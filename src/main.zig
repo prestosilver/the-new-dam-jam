@@ -635,15 +635,6 @@ pub fn main(_: std.process.Init) !void {
         \\    const view = new DataView(wasmMemory.buffer);
         \\    view.setUint8(object_start + $2, 0, true); 
         \\}
-        \\set_opponent = function (name) {
-        \\    if (name.length > 12) throw new Error("opponent name " + name + " is too long for set_leaderboard");
-        \\    const tmp_name = name + "\0";
-        \\    const object_start = $6;
-        \\    const encoder = new TextEncoder();
-        \\    const stringBytes = encoder.encode(tmp_name);
-        \\    const entryBytes = new Uint8Array(wasmMemory.buffer, object_start, stringBytes.length);
-        \\    entryBytes.set(stringBytes);
-        \\}
     , .{
         &leaderboard_entries,
         @intFromPtr(&leaderboard_entries[1]) - @intFromPtr(&leaderboard_entries[0]),
@@ -651,7 +642,31 @@ pub fn main(_: std.process.Init) !void {
         @as(i32, @intCast(@offsetOf(Leaderboard.Entry, "name"))), // $3
         @as(i32, @intCast(@offsetOf(Leaderboard.Entry, "mmr"))), // $4
         @as(i32, LEADERBOARD_LEN + 1), // $5
-        @intFromPtr(&opponent_buf), // $6
+    });
+
+    // set_opponent function
+    emasm.EM_ASM(
+        \\set_opponent = function (name) {
+        \\    if (name.length > 12) throw new Error("opponent name " + name + " is too long for set_leaderboard");
+        \\    const tmp_name = name + "\0";
+        \\    const encoder = new TextEncoder();
+        \\    const stringBytes = encoder.encode(tmp_name);
+        \\    const entryBytes = new Uint8Array(wasmMemory.buffer, $0, stringBytes.length);
+        \\    entryBytes.set(stringBytes);
+        \\}
+    , .{
+        @intFromPtr(&opponent_buf), // $0
+    });
+
+    // set_score function
+    emasm.EM_ASM(
+        \\set_score = function (score) {
+        \\    if (score == -1) return;
+        \\    const view = new DataView(wasmMemory.buffer);
+        \\    view.setInt32($0, score, true); 
+        \\}
+    , .{
+        @intFromPtr(&mmr_value), // $0
     });
 
     while (!rl.windowShouldClose()) {
@@ -686,8 +701,6 @@ pub fn main(_: std.process.Init) !void {
                 },
                 .lobby => {
                     {
-                        if (std.math.cast(u32, emasm.EM_ASM_INT("return get_score();", .{}))) |new_value|
-                            mmr_value = new_value;
                         level_bar.target = @floatFromInt(mmr_value);
 
                         // Play button logic
@@ -770,8 +783,6 @@ pub fn main(_: std.process.Init) !void {
                     shop.update(game_done, &p2_board, shop_bounds, dt);
                 },
                 .end => {
-                    if (std.math.cast(u32, emasm.EM_ASM_INT("return get_score();", .{}))) |new_value|
-                        mmr_value = new_value;
                     level_bar.target = @floatFromInt(mmr_value);
 
                     level_bar.update(dt);
