@@ -139,18 +139,7 @@ export function leaderboard_page(start: number, count: number) {
   //   }
   // 
   //   const delay = getRandomTime(0, 300);
-  //  // Helper function to get a random integer between min and max (in milliseconds)
-function getRandomTime(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-// Random delay between 1000ms (1s) and 5000ms (5s)
-const delay = getRandomTime(1000, 5000);
-
-setTimeout(() => {
-  console.log(`Executed after ${delay} ms`);
-  // Put your code here
-}, delay); const mmr = (i + start) * 1000;
+  //   const mmr = (i + start) * 1000;
   //   const index = start + i;
 
   //   if (index < 37)
