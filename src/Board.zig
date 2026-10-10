@@ -44,6 +44,7 @@ const Player = union(enum) {
     },
 };
 
+dated: bool = true,
 font_size: f32 = 66,
 
 player: Player = .{ .user = .{} },
@@ -198,6 +199,7 @@ pub fn update(self: *Board, done: bool, bounds: rl.Rectangle, dt: f32) void {
             if (rl.isMouseButtonPressed(.left) and
                 rl.checkCollisionPointRec(mouse_pos, bounds))
             {
+                self.dated = true;
                 for (0..self.shot_stats.darts_per_shot) |_| {
                     self.throwDart(bounds, mouse_pos);
                 }
@@ -276,8 +278,13 @@ pub fn draw(self: *const Board, done: bool, bounds: rl.Rectangle) void {
                 .width = @floatFromInt(dart_texture.width),
                 .height = @floatFromInt(dart_texture.height),
             },
-            .{ .x = position.x, .y = position.y, .width = dart_size.x, .height = dart_size.y },
-            .{ .x = 0, .y = 0 },
+            .{
+                .x = position.x - (0.5 * dart_size.x),
+                .y = position.y,
+                .width = dart_size.x,
+                .height = dart_size.y,
+            },
+            .{ .x = 0.5, .y = 0 },
             0,
             .alpha(.white, fade),
         );
@@ -434,18 +441,22 @@ pub fn buyUpgrade(self: *Board, upgrade: Shop.Upgrade) void {
 
 var web_idx: usize = 0;
 
-pub fn shopSend(board: *const Board) void {
+pub fn shopSend(self: *Board) void {
+    if (!self.dated)
+        return;
+    self.dated = false;
+
+    web_idx += 1;
+
     const data: Shop.WebPayload = .{
         .payload_idx = web_idx,
-        .processed_darts = board.processed_darts,
-        .shot_stats = @bitCast(board.shot_stats),
-        .monkey_stats = @bitCast(board.monkey_stats),
+        .processed_darts = self.processed_darts,
+        .shot_stats = @bitCast(self.shot_stats),
+        .monkey_stats = @bitCast(self.monkey_stats),
     };
 
     emasm.EM_ASM(
         \\const stringBytes = new Uint8Array(wasmMemory.buffer, $0, $1);
         \\shop_purchase(JSON.stringify(stringBytes));
     , .{ &data, @as(i32, @sizeOf(Shop.WebPayload)) });
-
-    web_idx += 1;
 }
