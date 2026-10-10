@@ -168,7 +168,7 @@ fn setState(new_state: State) void {
                         .upgrade_rate = 1,
                     } },
                     .font_size = 25,
-                    .name = "Albert (AI)",
+                    .name = "Albert Bot",
                 };
             } else {
                 p2_board = .{
