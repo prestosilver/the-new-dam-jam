@@ -483,7 +483,6 @@ pub fn main(_: std.process.Init) !void {
             .height = USER_SIZE.y,
         },
         .text_size = USER_SIZE.y - 20,
-        .text = .initBuffer(&name_buf),
     };
 
     login_button = .{

@@ -14,7 +14,7 @@ state: packed struct {
 } = .{},
 bounds: rl.Rectangle,
 text_size: f32,
-text: std.ArrayList(u8),
+text: [12:0]u8 = std.mem.zeroes([12:0]u8),
 
 const TextBox = @This();
 
@@ -23,21 +23,17 @@ pub fn update(self: *TextBox) void {
 
     self.state.focused = rl.checkCollisionPointRec(mouse_pos, self.bounds);
     if (rl.isMouseButtonPressed(.left)) {
+        if (self.state.active == self.state.focused) return;
         self.state.active = self.state.focused;
 
-        if (self.state.focused)
-            emasm.EM_ASM("showKeyboard()", .{});
+        if (self.state.active) {
+            emasm.EM_ASM("showKeyboard($0, 12)", .{
+                &self.text,
+            });
+        } else emasm.EM_ASM("hideKeyboard()", .{
+            &self.text,
+        });
     }
-
-    if (self.state.active) {
-        const ch: u8 = @intCast(@mod(rl.getCharPressed(), 256));
-        if (ch != 0)
-            self.text.appendBounded(ch) catch {};
-    }
-
-    if (rl.isKeyPressed(.backspace) or
-        rl.isKeyPressedRepeat(.backspace))
-        _ = self.text.pop();
 }
 
 pub fn draw(self: *const TextBox) void {
@@ -51,7 +47,7 @@ pub fn draw(self: *const TextBox) void {
     const text = std.fmt.bufPrintSentinel(
         &fmt_buf,
         "{s}{s}",
-        .{ self.text.items, if (self.state.active) "_" else "" },
+        .{ self.getText(), if (self.state.active) "_" else "" },
         0,
     ) catch unreachable;
 
@@ -69,5 +65,5 @@ pub fn draw(self: *const TextBox) void {
 }
 
 pub fn getText(self: *const TextBox) []const u8 {
-    return self.text.items;
+    return std.mem.span(@as([*:0]const u8, &self.text));
 }
