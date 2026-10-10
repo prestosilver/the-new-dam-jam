@@ -111,6 +111,8 @@ export function poll_ready() {
 // This is called by the game when a shop purchase
 // is made it transmits things in a string value
 export function shop_purchase(state: string) {
+  if (!match_ready) return;
+
   socket.emit("shop:send", state);
 }
 
@@ -127,9 +129,36 @@ export function leaderboard_page(start: number, count: number) {
   leaderboard_start = start;
   leaderboard_count = count;
   for (let i = 0; i < count; i++)
-    unset_leaderboard(start + i);
+    unset_leaderboard(i);
 
   socket.emit("leaderboard:request", {start, count});
+
+  // for (let i = 0; i < count; i++) {
+  //   function getRandomTime(min: number, max: number): number {
+  //     return Math.floor(Math.random() * (max - min + 1)) + min;
+  //   }
+  // 
+  //   const delay = getRandomTime(0, 300);
+  //  // Helper function to get a random integer between min and max (in milliseconds)
+function getRandomTime(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+// Random delay between 1000ms (1s) and 5000ms (5s)
+const delay = getRandomTime(1000, 5000);
+
+setTimeout(() => {
+  console.log(`Executed after ${delay} ms`);
+  // Put your code here
+}, delay); const mmr = (i + start) * 1000;
+  //   const index = start + i;
+
+  //   if (index < 37)
+  //     setTimeout(() => {
+  //       if (index >= leaderboard_start && index < leaderboard_start + leaderboard_count)
+  //         set_leaderboard(index - leaderboard_start, "test", mmr);
+  //     }, delay);
+  // }
 }
 
 

@@ -93,6 +93,8 @@ var play_button: Button = undefined;
 var continue_button: Button = undefined;
 var practice_button: Button = undefined;
 var back_button: Button = undefined;
+var next_button: Button = undefined;
+var prev_button: Button = undefined;
 var leaderboard_button: Button = undefined;
 var leaderboard_page: i32 = 0;
 
@@ -102,8 +104,8 @@ var shop_bounds: rl.Rectangle = undefined;
 
 var game_started: bool = false;
 
-var leaderboard_entries: [LEADERBOARD_LEN]Leaderboard.Entry = [_]Leaderboard.Entry{.{}} ** LEADERBOARD_LEN;
-var leaderboard: [LEADERBOARD_LEN]Leaderboard = undefined;
+var leaderboard_entries: [LEADERBOARD_LEN + 1]Leaderboard.Entry = [_]Leaderboard.Entry{.{}} ** (LEADERBOARD_LEN + 1);
+var leaderboard: [LEADERBOARD_LEN + 1]Leaderboard = undefined;
 
 var level_bar: Bar = undefined;
 
@@ -195,7 +197,7 @@ fn setState(new_state: State) void {
             leaderboard_page = 0;
             emasm.EM_ASM("leaderboard_page($0, $1)", .{
                 LEADERBOARD_LEN * leaderboard_page,
-                @as(i32, LEADERBOARD_LEN),
+                @as(i32, LEADERBOARD_LEN + 1),
             });
         },
     }
@@ -415,11 +417,12 @@ fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
             level_bar.draw();
         },
         .leaderboard => {
-            for (leaderboard) |entry| {
+            for (leaderboard[0 .. leaderboard.len - 1]) |entry|
                 entry.draw();
-            }
 
             back_button.draw("Back");
+            next_button.draw("Next");
+            prev_button.draw("Prev");
         },
     }
 }
@@ -549,7 +552,27 @@ pub fn main(_: std.process.Init) !void {
     back_button = .{
         .bounds = .{
             .x = build_options.SCREEN_WIDTH - UI_PAD - PRACTICE_SIZE.x,
-            .y = build_options.SCREEN_HEIGHT - UI_PAD - PRACTICE_SIZE.y,
+            .y = build_options.SCREEN_HEIGHT - 1 * (UI_PAD + PRACTICE_SIZE.y),
+            .width = PRACTICE_SIZE.x,
+            .height = PRACTICE_SIZE.y,
+        },
+        .text_size = PRACTICE_SIZE.y - 20,
+    };
+
+    next_button = .{
+        .bounds = .{
+            .x = build_options.SCREEN_WIDTH - 2 * (UI_PAD + PRACTICE_SIZE.x),
+            .y = build_options.SCREEN_HEIGHT - 1 * (UI_PAD + PRACTICE_SIZE.y),
+            .width = PRACTICE_SIZE.x,
+            .height = PRACTICE_SIZE.y,
+        },
+        .text_size = PRACTICE_SIZE.y - 20,
+    };
+
+    prev_button = .{
+        .bounds = .{
+            .x = UI_PAD,
+            .y = build_options.SCREEN_HEIGHT - 1 * (UI_PAD + PRACTICE_SIZE.y),
             .width = PRACTICE_SIZE.x,
             .height = PRACTICE_SIZE.y,
         },
@@ -583,7 +606,7 @@ pub fn main(_: std.process.Init) !void {
     // Register the set_leaderboard function
     emasm.EM_ASM(
         \\set_leaderboard = function (idx, name, mmr) {
-        \\    if (name.length > 15) throw new Error("name " + name + " is too long for set_leaderboard");
+        \\    if (name.length > $6) throw new Error("name " + name + " is too long for set_leaderboard");
         \\    const tmp_name = name + "\0";
         \\    const object_start = $0 + idx * $1;
         \\    const encoder = new TextEncoder();
@@ -595,6 +618,7 @@ pub fn main(_: std.process.Init) !void {
         \\    view.setUint8(object_start + $2, 1, true); 
         \\}
         \\unset_leaderboard = function (idx) {
+        \\    if (name.length > $6) throw new Error("name " + name + " is too long for set_leaderboard");
         \\    const object_start = $0 + idx * $1;
         \\    const view = new DataView(wasmMemory.buffer);
         \\    view.setUint8(object_start + $2, 0, true); 
@@ -605,6 +629,7 @@ pub fn main(_: std.process.Init) !void {
         @as(i32, @intCast(@offsetOf(Leaderboard.Entry, "valid"))), // $2
         @as(i32, @intCast(@offsetOf(Leaderboard.Entry, "name"))), // $3
         @as(i32, @intCast(@offsetOf(Leaderboard.Entry, "mmr"))), // $4
+        @as(i32, LEADERBOARD_LEN + 1),
     });
 
     while (!rl.windowShouldClose()) {
@@ -733,9 +758,33 @@ pub fn main(_: std.process.Init) !void {
                         setState(.lobby);
                 },
                 .leaderboard => {
+                    prev_button.state.disabled = !(leaderboard_page > 0);
+                    next_button.state.disabled = !(leaderboard_entries[LEADERBOARD_LEN].valid);
+
                     back_button.update();
+                    next_button.update();
+                    prev_button.update();
+
                     if (back_button.isPressed())
                         setState(.lobby);
+
+                    if (next_button.isPressed()) {
+                        leaderboard_page += 1;
+
+                        emasm.EM_ASM("leaderboard_page($0, $1)", .{
+                            LEADERBOARD_LEN * leaderboard_page,
+                            @as(i32, LEADERBOARD_LEN + 1),
+                        });
+                    }
+
+                    if (prev_button.isPressed()) {
+                        leaderboard_page -= 1;
+
+                        emasm.EM_ASM("leaderboard_page($0, $1)", .{
+                            LEADERBOARD_LEN * leaderboard_page,
+                            @as(i32, LEADERBOARD_LEN + 1),
+                        });
+                    }
                 },
             }
         }

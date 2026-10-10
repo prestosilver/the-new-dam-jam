@@ -2,6 +2,8 @@ const rl = @import("raylib");
 const std = @import("std");
 const build_options = @import("build_options");
 
+const util = @import("util.zig");
+
 const emasm = @import("emasm.zig");
 
 const Shop = @import("Shop.zig");
@@ -261,16 +263,22 @@ pub fn draw(self: *const Board, done: bool, bounds: rl.Rectangle) void {
         0,
     ) catch unreachable;
 
-    const size: f32 = @floatFromInt(rl.measureText(
+    const size: f32 = rl.measureTextEx(
+        util.font,
         darts_text,
-        @intFromFloat(self.font_size),
-    ));
+        self.font_size,
+        0,
+    ).x;
 
-    rl.drawText(
+    rl.drawTextEx(
+        util.font,
         if (done) (if (self.processed_darts == MAX_DARTS) "Winner" else "Loser") else darts_text,
-        @intFromFloat(center.x - size / 2),
-        @intFromFloat(bounds.y),
-        @intFromFloat(self.font_size),
+        .{
+            .x = center.x - size / 2,
+            .y = bounds.y,
+        },
+        self.font_size,
+        0,
         .white,
     );
 }

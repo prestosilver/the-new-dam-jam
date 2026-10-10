@@ -3,6 +3,7 @@ const rl = @import("raylib");
 
 const build_options = @import("build_options");
 
+const util = @import("util.zig");
 const emasm = @import("emasm.zig");
 const Board = @import("Board.zig");
 const Button = @import("ui/Button.zig");
@@ -15,7 +16,7 @@ const TITLE_FONT_SIZE = 44;
 const MONEY_FONT_SIZE = 22;
 const UPGRADE_FONT_SIZE = 44;
 const UPGRADE_DESC_FONT_SIZE = 22;
-const UPGRADE_COUNT_FONT_SIZE = 22;
+const UPGRADE_COST_FONT_SIZE = 33;
 const SHOP_POLL_TIME = 0.2;
 
 const UPGRADE_PADDING = 5;
@@ -198,11 +199,12 @@ pub fn draw(self: *const Shop, board: *const Board, bounds: rl.Rectangle) void {
     };
 
     //draw title
-    rl.drawText(
+    rl.drawTextEx(
+        util.font,
         build_options.GAME_NAME,
-        @intFromFloat(pos.x),
-        @intFromFloat(pos.y),
+        pos,
         TITLE_FONT_SIZE,
+        0,
         SHOP_TEXT,
     );
     pos.y += TITLE_FONT_SIZE;
@@ -215,11 +217,12 @@ pub fn draw(self: *const Shop, board: *const Board, bounds: rl.Rectangle) void {
         0,
     ) catch unreachable;
 
-    rl.drawText(
+    rl.drawTextEx(
+        util.font,
         money_text,
-        @intFromFloat(pos.x),
-        @intFromFloat(pos.y),
+        pos,
         MONEY_FONT_SIZE,
+        0,
         SHOP_TEXT,
     );
     pos.y += MONEY_FONT_SIZE;
@@ -235,35 +238,60 @@ pub fn draw(self: *const Shop, board: *const Board, bounds: rl.Rectangle) void {
 
         pos.y += UPGRADE_PADDING;
 
-        const count_text = std.fmt.bufPrintSentinel(
+        const cost = upgradeCost(board, upgrade);
+
+        const cost_text = std.fmt.bufPrintSentinel(
             &fmt_buf,
-            "({})",
-            .{board.upgrade_counts.get(upgrade)},
+            " ({}) {}",
+            .{
+                board.upgrade_counts.get(upgrade),
+                cost,
+            },
             0,
         ) catch unreachable;
-        const width: f32 = @floatFromInt(rl.measureText(count_text, UPGRADE_FONT_SIZE));
+        const width: f32 = rl.measureTextEx(util.font, cost_text, UPGRADE_COST_FONT_SIZE, 0).x;
 
-        rl.drawText(
-            count_text,
-            @intFromFloat(bounds.x + bounds.width - SHOP_PADDING.x - width),
-            @intFromFloat(pos.y),
-            UPGRADE_COUNT_FONT_SIZE,
+        rl.drawTextEx(
+            util.font,
+            cost_text,
+            .{
+                .x = bounds.x + bounds.width - SHOP_PADDING.x - width,
+                .y = pos.y,
+            },
+            UPGRADE_COST_FONT_SIZE,
+            0,
             Button.TEXT_COLOR,
         );
 
-        rl.drawText(
-            info.name,
-            @intFromFloat(pos.x + UPGRADE_PADDING),
-            @intFromFloat(pos.y),
+        const name_text = std.fmt.bufPrintSentinel(
+            &fmt_buf,
+            "{s}",
+            .{
+                info.name,
+            },
+            0,
+        ) catch unreachable;
+        rl.drawTextEx(
+            util.font,
+            name_text,
+            .{
+                .x = pos.x + UPGRADE_PADDING,
+                .y = pos.y,
+            },
             UPGRADE_FONT_SIZE,
+            0,
             Button.TEXT_COLOR,
         );
         pos.y += UPGRADE_FONT_SIZE;
-        rl.drawText(
+        rl.drawTextEx(
+            util.font,
             info.desc,
-            @intFromFloat(pos.x + UPGRADE_PADDING),
-            @intFromFloat(pos.y),
+            .{
+                .x = pos.x + UPGRADE_PADDING,
+                .y = pos.y,
+            },
             UPGRADE_DESC_FONT_SIZE,
+            0,
             Button.TEXT_COLOR,
         );
         pos.y += UPGRADE_DESC_FONT_SIZE * 2;
