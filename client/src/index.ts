@@ -21,19 +21,6 @@ let match_ready: boolean = false;
 // shop
 let opponent_shop_data: string = "";
 
-function getCookie(name: string | null) {
-  const nameEQ = name + "=";
-  const ca = document.cookie.split(';'); //
-
-  for (let i = 0; i < ca.length; i++) {
-    let c = ca[i].trim(); // Remove leading whitespace
-    if (c.indexOf(nameEQ) === 0) {
-      return decodeURIComponent(c.substring(nameEQ.length, c.length)); //
-    }
-  }
-  return null; // Return null if the cookie doesn't exist
-}
-
 /// Login functions
 
 // attempts to login the current user if username
@@ -47,8 +34,8 @@ export function try_login(
     ): boolean {
 
   if (username == null || username.length == 0) {
-    username = getCookie("username");
-    password = getCookie("password");
+    username = localStorage.getItem("d2m_username");
+    password = localStorage.getItem("d2m_password");
   }
 
   if (username == null || password == null) 
@@ -61,8 +48,8 @@ export function try_login(
     const date = new Date();
     // Convert days to milliseconds
     date.setTime(date.getTime() + (100 * 24 * 60 * 60 * 1000));
-    document.cookie = `username=${username!}; expires=${date.toUTCString()}`;
-    document.cookie = `password=${password!}; expires=${date.toUTCString()}`;
+    localStorage.setItem("d2m_username", username);
+    localStorage.setItem("d2m_password", password);
   });
 
   return true;
