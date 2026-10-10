@@ -80,7 +80,6 @@ var practice_mode: bool = false;
 
 var fmt_buf: [64]u8 = undefined;
 var user_buf: [12:0]u8 = std.mem.zeroes([12:0]u8);
-var username: []u8 = "";
 
 var opponent_buf: [12:0]u8 = std.mem.zeroes([12:0]u8);
 
@@ -111,67 +110,45 @@ var leaderboard: [LEADERBOARD_LEN + 1]Leaderboard = undefined;
 
 var level_bar: Bar = undefined;
 
-fn login(name: ?[]const u8, password: ?[4]u8) void {
-    username = "";
+fn login(name: ?[]const u8, password: ?[4]u8) bool {
     if (name == null or password == null) {
         if (@import("builtin").target.os.tag == .emscripten) {
-            emasm.EM_ASM(
-                \\data = try_login(null, null);
-            , .{});
+            return emasm.EM_ASM_INT(
+                \\return try_login(null, null);
+            , .{}) != 0;
         } else {
-            @memcpy(user_buf[0..4], "TEST");
-            username = user_buf[0..4];
+            @memcpy(user_buf[0..5], "TEST\x00");
+            return true;
         }
     } else {
         if (@import("builtin").target.os.tag == .emscripten) {
             const tmp_password = password.?;
-            emasm.EM_ASM(
+            return emasm.EM_ASM_INT(
                 \\const decoder = new TextDecoder();
                 \\const nameBytes = new Uint8Array(wasmMemory.buffer, $1, $2);
                 \\const passBytes = new Uint8Array(wasmMemory.buffer, $3, 4);
                 \\const name = decoder.decode(nameBytes);
                 \\const pass = decoder.decode(passBytes);
-                \\data = try_login(name, pass);
+                \\return try_login(name, pass);
             , .{
                 @as(*const anyopaque, &user_buf),
                 @as(*const anyopaque, name.?.ptr),
                 name.?.len,
                 @as(*const anyopaque, &tmp_password),
-            });
+            }) != 0;
         } else {
-            @memcpy(user_buf[0..4], "TEST");
-            username = user_buf[0..4];
+            @memcpy(user_buf[0..5], "TEST\x00");
+            return true;
         }
     }
-}
 
-fn pollLogin() bool {
-    const len = emasm.EM_ASM_INT(
-        \\data = poll_login();
-        \\if (data == null || data.length == 0) return 0;
-        \\const encoder = new TextEncoder();
-        \\const stringBytes = encoder.encode(data);
-        \\const memoryView = new Uint8Array(wasmMemory.buffer, $0, stringBytes.length);
-        \\memoryView.set(stringBytes);
-        \\return stringBytes.length;
-    , .{
-        @as(*const anyopaque, &user_buf),
-    });
-    user_buf[@intCast(len)] = 0;
-    username = user_buf[0..@intCast(len)];
-
-    return username.len > 0;
+    unreachable;
 }
 
 fn setState(new_state: State) void {
     switch (new_state) {
         .loading => {},
-        .login => {
-            login(null, null);
-
-            if (username.len != 0)
-                return setState(.lobby);
-        },
+        .login => {},
         .lobby => {
             lobby_state = .lobby;
         },
@@ -320,7 +297,7 @@ fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
             const user_state_text = std.fmt.bufPrintSentinel(
                 &fmt_buf,
                 "user v: {s}",
-                .{username},
+                .{user_buf},
                 0,
             ) catch unreachable;
             rl.drawText(user_state_text, 0, y, 22, .white);
@@ -644,6 +621,20 @@ pub fn main(_: std.process.Init) !void {
         @as(i32, LEADERBOARD_LEN + 1), // $5
     });
 
+    // set_username function
+    emasm.EM_ASM(
+        \\set_username = function (name) {
+        \\    if (name.length > 12) throw new Error("opponent name " + name + " is too long for set_leaderboard");
+        \\    const tmp_name = name + "\0";
+        \\    const encoder = new TextEncoder();
+        \\    const stringBytes = encoder.encode(tmp_name);
+        \\    const entryBytes = new Uint8Array(wasmMemory.buffer, $0, stringBytes.length);
+        \\    entryBytes.set(stringBytes);
+        \\}
+    , .{
+        @intFromPtr(&user_buf), // $0
+    });
+
     // set_opponent function
     emasm.EM_ASM(
         \\set_opponent = function (name) {
@@ -669,6 +660,8 @@ pub fn main(_: std.process.Init) !void {
         @intFromPtr(&mmr_value), // $0
     });
 
+    _ = login(null, null);
+
     while (!rl.windowShouldClose()) {
         const dt = rl.getFrameTime();
         transition_timer += dt * 4.0;
@@ -688,12 +681,12 @@ pub fn main(_: std.process.Init) !void {
                         box.update();
 
                     if (login_button.isPressed() or rl.isKeyPressed(.enter)) {
-                        login(login_box.getText(), pass_buf);
+                        _ = login(login_box.getText(), pass_buf);
                     }
 
                     poll_timer += dt;
                     if (poll_timer > POLL_INTERVAL) {
-                        if (pollLogin())
+                        if (user_buf[0] != 0)
                             setState(.lobby);
 
                         poll_timer = 0.0;

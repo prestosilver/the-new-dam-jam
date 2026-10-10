@@ -1,28 +1,38 @@
-import { io } from "socket.io-client";
+import {io} from "socket.io-client";
 
 const socket = io("https://games.samichamberlain.com", {
-  path: "/darts-2-million/",
-  transports: ["websocket"],
+  path : "/darts-2-million/",
+  transports : [ "websocket" ],
 });
 
 /// functions defined in main.zig (search function)
 declare function set_score(name: number): void;
+declare function set_username(name: string): void;
 declare function set_opponent(name: string): void;
-declare function set_leaderboard(list_index: number, name: string, mmr: number): void;
+declare function set_leaderboard(list_index: number, name: string,
+                                 mmr: number): void;
 declare function unset_leaderboard(list_index: number): void;
 
-///Global state
-//Login
-let login_done: boolean = false;
-let login_valid: boolean = false;
-let login_name: string = "";
-
-//matchmaking
+/// Global state
+// matchmaking
 let match_found: boolean = false;
 let match_ready: boolean = false;
 
-//shop
+// shop
 let opponent_shop_data: string = "";
+
+function getCookie(name: string | null) {
+  const nameEQ = name + "=";
+  const ca = document.cookie.split(';'); //
+
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i].trim(); // Remove leading whitespace
+    if (c.indexOf(nameEQ) === 0) {
+      return decodeURIComponent(c.substring(nameEQ.length, c.length)); //
+    }
+  }
+  return null; // Return null if the cookie doesn't exist
+}
 
 /// Login functions
 
@@ -32,28 +42,30 @@ let opponent_shop_data: string = "";
 // returns the username of the logged in player, or null
 // on failure to login
 export function try_login(
-  username: string | null,
-  password: string | null,
-): void {
-  if (username == null || username.length == 0)
-      return;
-  
-  login_done = false;
-  socket.emit("login", { username, password }, (response: boolean) => {
-    login_done = true;
-    login_name = username;
-    login_valid = response;
-  });
-}
+    username: string|null,
+    password: string|null,
+    ): boolean {
 
-export function poll_login(): string {
-  if (login_done) {
-    login_done = false;
-
-    return login_name;
+  if (username == null || username.length == 0) {
+    username = getCookie("username");
+    password = getCookie("password");
   }
 
-  return "";
+  if (username == null || password == null) 
+      return false;
+
+  set_username("");
+  socket.emit("login", {username, password}, (response: boolean) => {
+    set_username(username!);
+
+    const date = new Date();
+    // Convert days to milliseconds
+    date.setTime(date.getTime() + (100 * 24 * 60 * 60 * 1000));
+    document.cookie = `username=${username!}; expires=${date.toUTCString()}`;
+    document.cookie = `password=${password!}; expires=${date.toUTCString()}`;
+  });
+
+  return true;
 }
 
 /// Match joining functions
@@ -76,28 +88,23 @@ export function cancel_match() {
 
 // player confirmation, should be proceeded by
 // poll_ready eventually returning true
-export function ready_match() {
-  socket.emit("match:ready");
-}
+export function ready_match() { socket.emit("match:ready"); }
 
 // This is called while waiting for a match
 // If a match has been found it returns true
-export function poll_match() {
-  return match_found;
-}
+export function poll_match() { return match_found; }
 
 // This is called while waiting for the opponent
 // to confirm, if they have confirmed it returns
 // true
-export function poll_ready() {
-  return match_ready;
-}
+export function poll_ready() { return match_ready; }
 
 /// Gameplay functions
 // This is called by the game when a shop purchase
 // is made it transmits things in a string value
 export function shop_purchase(state: string) {
-  if (!match_ready) return;
+  if (!match_ready)
+    return;
 
   socket.emit("shop:send", state);
 }
@@ -106,9 +113,7 @@ export function shop_purchase(state: string) {
 // while, it should return the current shop state
 // of the opponent if it returns an empty string
 // it means no data has been sent from the opponent
-export function shop_sync() {
-  return opponent_shop_data;
-}
+export function shop_sync() { return opponent_shop_data; }
 
 let leaderboard_start: number = 0;
 let leaderboard_count: number = 0;
@@ -125,48 +130,39 @@ export function leaderboard_page(start: number, count: number) {
   //   function getRandomTime(min: number, max: number): number {
   //     return Math.floor(Math.random() * (max - min + 1)) + min;
   //   }
-  // 
+  //
   //   const delay = getRandomTime(0, 300);
   //   const mmr = (i + start) * 1000;
   //   const index = start + i;
 
   //   if (index < 37)
   //     setTimeout(() => {
-  //       if (index >= leaderboard_start && index < leaderboard_start + leaderboard_count)
+  //       if (index >= leaderboard_start && index < leaderboard_start +
+  //       leaderboard_count)
   //         set_leaderboard(index - leaderboard_start, "test", mmr);
   //     }, delay);
   // }
 }
 
-
 // Socket Listeners -- server responses are in args
 
-//Matchmaking
-socket.on("match:found", () => {
-  match_found = true;
-});
+// Matchmaking
+socket.on("match:found", () => { match_found = true; });
 
-socket.on("match:start", () => {
-  match_ready = true;
-});
+socket.on("match:start", () => { match_ready = true; });
 
-socket.on("opponent:get", (name: string) => {
-  set_opponent(name);
-});
+socket.on("opponent:get", (name: string) => { set_opponent(name); });
 
-//Score
-socket.on("score:get", (score: number) => {
-    set_score(score);
-});
+// Score
+socket.on("score:get", (score: number) => { set_score(score); });
 
-//opponent shop
-socket.on("shop:sync", (state: string) => {
-  opponent_shop_data = state;
-});
+// opponent shop
+socket.on("shop:sync", (state: string) => { opponent_shop_data = state; });
 
-//opponent shop
+// opponent shop
 socket.on("leaderboard:value", (index: number, name: string, mmr: number) => {
-  // if user is paging fast this will 
-  if (index >= leaderboard_start && index < leaderboard_start + leaderboard_count)
+  // if user is paging fast this will
+  if (index >= leaderboard_start &&
+      index < leaderboard_start + leaderboard_count)
     set_leaderboard(index - leaderboard_start, name, mmr);
 });
