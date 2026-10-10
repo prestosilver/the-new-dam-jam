@@ -67,8 +67,8 @@ var transition_timer: f32 = 0.0;
 // The lobbys state
 var lobby_state: enum { lobby, ready, matched, waiting } = .lobby;
 
-var p1_board: Board = .{};
-var p2_board: Board = .{};
+var p1_board: Board = .{ .name = "" };
+var p2_board: Board = .{ .name = "" };
 
 var shop: Shop = .{};
 var mmr_value: u32 = 0;
@@ -79,8 +79,10 @@ var game_begin: f32 = 3.0;
 var practice_mode: bool = false;
 
 var fmt_buf: [64]u8 = undefined;
-var user_buf: [12]u8 = undefined;
+var user_buf: [12:0]u8 = std.mem.zeroes([12:0]u8);
 var username: []u8 = "";
+
+var opponent_buf: [12:0]u8 = std.mem.zeroes([12:0]u8);
 
 var name_buf: [12]u8 = undefined;
 var pass_buf: [4]u8 = "aaaa".*; // A serializable char
@@ -155,6 +157,7 @@ fn pollLogin() bool {
     , .{
         @as(*const anyopaque, &user_buf),
     });
+    user_buf[@intCast(len)] = 0;
     username = user_buf[0..@intCast(len)];
 
     return username.len > 0;
@@ -176,7 +179,11 @@ fn setState(new_state: State) void {
             game_started = true;
             game_begin = 3.0;
 
-            p1_board = .{ .player = .{ .user = .{} }, .font_size = 66 };
+            p1_board = .{
+                .player = .{ .user = .{} },
+                .font_size = 66,
+                .name = std.mem.span(@as([*:0]const u8, &user_buf)),
+            };
             if (practice_mode) {
                 p2_board = .{
                     .player = .{ .ai = .{
@@ -184,11 +191,13 @@ fn setState(new_state: State) void {
                         .upgrade_rate = 1,
                     } },
                     .font_size = 25,
+                    .name = "Albert (AI)",
                 };
             } else {
                 p2_board = .{
                     .player = .{ .web = .{} },
                     .font_size = 25,
+                    .name = std.mem.span(@as([*:0]const u8, &opponent_buf)),
                 };
             }
         },
@@ -626,13 +635,23 @@ pub fn main(_: std.process.Init) !void {
         \\    const view = new DataView(wasmMemory.buffer);
         \\    view.setUint8(object_start + $2, 0, true); 
         \\}
+        \\set_opponent = function (name) {
+        \\    if (name.length > 12) throw new Error("opponent name " + name + " is too long for set_leaderboard");
+        \\    const tmp_name = name + "\0";
+        \\    const object_start = $6;
+        \\    const encoder = new TextEncoder();
+        \\    const stringBytes = encoder.encode(tmp_name);
+        \\    const entryBytes = new Uint8Array(wasmMemory.buffer, object_start, stringBytes.length);
+        \\    entryBytes.set(stringBytes);
+        \\}
     , .{
         &leaderboard_entries,
         @intFromPtr(&leaderboard_entries[1]) - @intFromPtr(&leaderboard_entries[0]),
         @as(i32, @intCast(@offsetOf(Leaderboard.Entry, "valid"))), // $2
         @as(i32, @intCast(@offsetOf(Leaderboard.Entry, "name"))), // $3
         @as(i32, @intCast(@offsetOf(Leaderboard.Entry, "mmr"))), // $4
-        @as(i32, LEADERBOARD_LEN + 1),
+        @as(i32, LEADERBOARD_LEN + 1), // $5
+        @intFromPtr(&opponent_buf), // $6
     });
 
     while (!rl.windowShouldClose()) {

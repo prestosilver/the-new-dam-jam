@@ -5,6 +5,7 @@ const socket = io("https://games.samichamberlain.com", {
   transports: ["websocket"],
 });
 
+declare function set_opponent(name: string): void;
 declare function set_leaderboard(list_index: number, name: string, mmr: number): void;
 declare function unset_leaderboard(list_index: number): void;
 
@@ -15,9 +16,6 @@ let login_valid: boolean = false;
 let login_name: string = "";
 //score
 let score: number = 0;
-
-//opponent info
-let opponent_name: string = "";
 
 //matchmaking
 let match_found: boolean = false;
@@ -54,14 +52,11 @@ export function try_login(
 export function poll_login(): string {
   if (login_done) {
     login_done = false;
+
     return login_name;
   }
 
   return "";
-}
-
-export function get_opponent_info() {
-  return opponent_name;
 }
 
 /// Match joining functions
@@ -130,7 +125,6 @@ export function leaderboard_page(start: number, count: number) {
   leaderboard_count = count;
   for (let i = 0; i < count; i++)
     unset_leaderboard(i);
-
   socket.emit("leaderboard:request", {start, count});
 
   // for (let i = 0; i < count; i++) {
@@ -163,7 +157,7 @@ socket.on("match:start", () => {
 });
 
 socket.on("opponent:get", (name: string) => {
-  opponent_name = name;
+  set_opponent(name);
 });
 
 //Score

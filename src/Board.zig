@@ -74,6 +74,8 @@ dart_fades: [MAX_DARTS]f32 = undefined,
 
 upgrade_counts: std.enums.EnumArray(Shop.Upgrade, u32) = .initFill(0),
 
+name: [:0]const u8,
+
 const DART_FALL_SPEED = 500;
 
 const Board = @This();
@@ -308,6 +310,25 @@ pub fn draw(self: *const Board, done: bool, bounds: rl.Rectangle) void {
         .{
             .x = center.x - size / 2,
             .y = bounds.y,
+        },
+        self.font_size,
+        0,
+        .white,
+    );
+
+    const user_size = rl.measureTextEx(
+        util.font,
+        self.name,
+        self.font_size,
+        0,
+    ).x;
+
+    rl.drawTextEx(
+        util.font,
+        self.name,
+        .{
+            .x = center.x - user_size / 2,
+            .y = bounds.y + bounds.height - self.font_size,
         },
         self.font_size,
         0,
