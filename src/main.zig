@@ -443,6 +443,9 @@ pub fn main(_: std.process.Init) !void {
 
     //rl.hideCursor();
 
+    Board.dart_texture = try .init("dart.png");
+    defer Board.dart_texture.unload();
+
     Board.board_texture = try .init("board.png");
     defer Board.board_texture.unload();
 

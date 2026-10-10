@@ -27,6 +27,7 @@ const OUTER_TRIPLE_RING = 0.47;
 
 pub var board_texture: rl.Texture = undefined;
 pub var background_texture: rl.Texture = undefined;
+pub var dart_texture: rl.Texture = undefined;
 
 const Player = union(enum) {
     ai: struct {
@@ -195,7 +196,9 @@ pub fn update(self: *Board, done: bool, bounds: rl.Rectangle, dt: f32) void {
             if (rl.isMouseButtonPressed(.left) and
                 rl.checkCollisionPointRec(mouse_pos, bounds))
             {
-                self.throwDart(bounds, mouse_pos);
+                for (0..self.shot_stats.darts_per_shot) |_| {
+                    self.throwDart(bounds, mouse_pos);
+                }
             }
         },
         .web => {},
@@ -210,7 +213,7 @@ pub fn draw(self: *const Board, done: bool, bounds: rl.Rectangle) void {
         @intFromFloat(bounds.height),
     );
     defer {
-        rl.drawRectangleLinesEx(bounds, 1, .white);
+        //rl.drawRectangleLinesEx(bounds, 1, .white);
         rl.endScissorMode();
     }
 
@@ -221,13 +224,26 @@ pub fn draw(self: *const Board, done: bool, bounds: rl.Rectangle) void {
         .y = bounds.y + bounds.height * 0.5,
     };
 
-    const board_side = @min(bounds.width, bounds.height) * 0.5;
+    const half_board_side = @min(bounds.width, bounds.height) * 0.5;
     const board_pos = rl.Rectangle{
-        .x = center.x - board_side,
-        .y = center.y - board_side,
-        .width = board_side * 2,
-        .height = board_side * 2,
+        .x = center.x - half_board_side,
+        .y = center.y - half_board_side,
+        .width = half_board_side * 2,
+        .height = half_board_side * 2,
     };
+
+    background_texture.drawPro(
+        .{
+            .x = 100,
+            .y = 0,
+            .width = @floatFromInt(background_texture.height),
+            .height = @floatFromInt(background_texture.height),
+        },
+        board_pos,
+        .{ .x = 0, .y = 0 },
+        0,
+        .white,
+    );
 
     board_texture.drawPro(
         .{
@@ -242,11 +258,27 @@ pub fn draw(self: *const Board, done: bool, bounds: rl.Rectangle) void {
         .white,
     );
 
+    const dart_size = rl.Vector2{
+        .x = half_board_side * 2 / @as(f32, @floatFromInt(board_texture.width)) * @as(f32, @floatFromInt(dart_texture.width)),
+        .y = half_board_side * 2 / @as(f32, @floatFromInt(board_texture.height)) * @as(f32, @floatFromInt(dart_texture.height)),
+    };
+
     for (
         self.dart_positions[self.first_dart..self.thrown_darts],
         self.dart_fades[self.first_dart..self.thrown_darts],
     ) |position, fade| {
-        rl.drawCircleV(position, 5, .alpha(.blue, fade));
+        dart_texture.drawPro(
+            .{
+                .x = 0,
+                .y = 0,
+                .width = @floatFromInt(dart_texture.width),
+                .height = @floatFromInt(dart_texture.height),
+            },
+            .{ .x = position.x, .y = position.y, .width = dart_size.x, .height = dart_size.y },
+            .{ .x = 0, .y = 0 },
+            0,
+            .alpha(.white, fade),
+        );
     }
 
     rl.drawRectangleRec(.{
@@ -284,80 +316,78 @@ pub fn draw(self: *const Board, done: bool, bounds: rl.Rectangle) void {
 }
 
 pub fn throwDart(self: *Board, bounds: rl.Rectangle, position: rl.Vector2) void {
-    for (0..self.shot_stats.darts_per_shot) |_| {
-        if (self.thrown_darts >= MAX_DARTS or
-            self.processed_darts >= MAX_DARTS) return;
+    if (self.thrown_darts >= MAX_DARTS or
+        self.processed_darts >= MAX_DARTS) return;
 
-        const angle = @as(f32, @floatFromInt(rl.getRandomValue(0, 100))) / 100.0 * std.math.pi * 2;
-        const mag = std.math.sqrt(@as(f32, @floatFromInt(rl.getRandomValue(0, 100))) / 100.0) * self.shot_stats.aim_focus;
+    const angle = @as(f32, @floatFromInt(rl.getRandomValue(0, 100))) / 100.0 * std.math.pi * 2;
+    const mag = std.math.sqrt(@as(f32, @floatFromInt(rl.getRandomValue(0, 100))) / 100.0) * self.shot_stats.aim_focus;
 
-        const throw_position = rl.Vector2{
-            .x = position.x + @sin(angle) * mag,
-            .y = position.y + @cos(angle) * mag,
-        };
+    const throw_position = rl.Vector2{
+        .x = position.x + @sin(angle) * mag,
+        .y = position.y + @cos(angle) * mag,
+    };
 
-        const twenty_angle = -0.5 / 20.0 * std.math.pi * 2.0;
+    const twenty_angle = -0.5 / 20.0 * std.math.pi * 2.0;
 
-        const center = rl.Vector2{
-            .x = bounds.x + bounds.width * 0.5,
-            .y = bounds.y + bounds.height * 0.5,
-        };
+    const center = rl.Vector2{
+        .x = bounds.x + bounds.width * 0.5,
+        .y = bounds.y + bounds.height * 0.5,
+    };
 
-        const dart_angle = rl.math.vector2Angle(.{
-            .x = @sin(twenty_angle) * bounds.width * 0.5,
-            .y = @cos(twenty_angle) * bounds.height * 0.5,
-        }, .{
-            .x = center.x - throw_position.x,
-            .y = center.y - throw_position.y,
-        });
+    const dart_angle = rl.math.vector2Angle(.{
+        .x = @sin(twenty_angle) * bounds.width * 0.5,
+        .y = @cos(twenty_angle) * bounds.height * 0.5,
+    }, .{
+        .x = center.x - throw_position.x,
+        .y = center.y - throw_position.y,
+    });
 
-        const dart_sector: u32 = @mod(@as(u32, @intFromFloat(dart_angle / std.math.pi / 2.0 * 20 + 21)), 20);
+    const dart_sector: u32 = @mod(@as(u32, @intFromFloat(dart_angle / std.math.pi / 2.0 * 20 + 21)), 20);
 
-        const board_radius = @min(bounds.width, bounds.height) * 0.5;
-        const shot_radius = throw_position.distance(center);
+    const board_radius = @min(bounds.width, bounds.height) * 0.5;
+    const shot_radius = throw_position.distance(center);
 
-        const outer_double_radius = board_radius * OUTER_DOUBLE_RING;
-        const inner_double_radius = board_radius * INNER_DOUBLE_RING;
+    const outer_double_radius = board_radius * OUTER_DOUBLE_RING;
+    const inner_double_radius = board_radius * INNER_DOUBLE_RING;
 
-        const outer_triple_radius = board_radius * OUTER_TRIPLE_RING;
-        const inner_triple_radius = board_radius * INNER_TRIPLE_RING;
+    const outer_triple_radius = board_radius * OUTER_TRIPLE_RING;
+    const inner_triple_radius = board_radius * INNER_TRIPLE_RING;
 
-        const bull_radius = board_radius * BULL_RADIUS;
-        const double_bull_radius = board_radius * DOUBLE_BULL_RADIUS;
+    const bull_radius = board_radius * BULL_RADIUS;
+    const double_bull_radius = board_radius * DOUBLE_BULL_RADIUS;
 
-        var value: u32 = BOARD_VALUES[dart_sector];
+    var value: u32 = BOARD_VALUES[dart_sector];
 
-        if (shot_radius > inner_double_radius and
-            shot_radius < outer_double_radius)
+    if (shot_radius > inner_double_radius and
+        shot_radius < outer_double_radius)
+        value *= 2;
+
+    if (shot_radius > inner_triple_radius and
+        shot_radius < outer_triple_radius)
+        value *= 3;
+
+    if (shot_radius < double_bull_radius) {
+        value = 25;
+
+        if (shot_radius > bull_radius)
             value *= 2;
-
-        if (shot_radius > inner_triple_radius and
-            shot_radius < outer_triple_radius)
-            value *= 3;
-
-        if (shot_radius < double_bull_radius) {
-            value = 25;
-
-            if (shot_radius > bull_radius)
-                value *= 2;
-        }
-
-        if (shot_radius > outer_double_radius)
-            value = 0;
-
-        self.money += value;
-
-        self.dart_states[self.thrown_darts] = if (value > 0)
-            .thrown
-        else
-            .fall;
-
-        self.dart_positions[self.thrown_darts] = throw_position;
-        self.dart_fades[self.thrown_darts] = 1.0;
-        self.dart_velocities[self.thrown_darts] = .{ .x = 0, .y = 0 };
-        self.thrown_darts += 1;
-        self.processed_darts += 1;
     }
+
+    if (shot_radius > outer_double_radius)
+        value = 0;
+
+    self.money += value;
+
+    self.dart_states[self.thrown_darts] = if (value > 0)
+        .thrown
+    else
+        .fall;
+
+    self.dart_positions[self.thrown_darts] = throw_position;
+    self.dart_fades[self.thrown_darts] = 1.0;
+    self.dart_velocities[self.thrown_darts] = .{ .x = 0, .y = 0 };
+    self.thrown_darts += 1;
+    self.processed_darts += 1;
 }
 
 pub fn buyUpgrade(self: *Board, upgrade: Shop.Upgrade) void {

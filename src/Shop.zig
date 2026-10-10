@@ -12,8 +12,8 @@ const SHOP_BG: rl.Color = .{ .r = 128, .g = 42, .b = 98, .a = 255 };
 const SHOP_TEXT: rl.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 };
 const SHOP_PADDING: rl.Vector2 = .{ .x = 20, .y = 20 };
 
-const TITLE_FONT_SIZE = 44;
-const MONEY_FONT_SIZE = 22;
+const TITLE_FONT_SIZE = 66;
+const MONEY_FONT_SIZE = 33;
 const UPGRADE_FONT_SIZE = 44;
 const UPGRADE_DESC_FONT_SIZE = 22;
 const UPGRADE_COST_FONT_SIZE = 33;
@@ -242,10 +242,10 @@ pub fn draw(self: *const Shop, board: *const Board, bounds: rl.Rectangle) void {
 
         const cost_text = std.fmt.bufPrintSentinel(
             &fmt_buf,
-            " ({}) {}",
+            "{}\n({})",
             .{
-                board.upgrade_counts.get(upgrade),
                 cost,
+                board.upgrade_counts.get(upgrade),
             },
             0,
         ) catch unreachable;
@@ -255,7 +255,7 @@ pub fn draw(self: *const Shop, board: *const Board, bounds: rl.Rectangle) void {
             util.font,
             cost_text,
             .{
-                .x = bounds.x + bounds.width - SHOP_PADDING.x - width,
+                .x = bounds.x + bounds.width - SHOP_PADDING.x * 2 - width,
                 .y = pos.y,
             },
             UPGRADE_COST_FONT_SIZE,
