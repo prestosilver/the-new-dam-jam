@@ -55,7 +55,7 @@ money: u32 = 0,
 
 shot_stats: extern struct {
     darts_per_shot: u32 = 1,
-    aim_focus: f32 = 200.0,
+    aim_focus: f32 = 0.25,
 } = .{},
 
 dart_monkey_timer: f64 = 0.0,
@@ -348,7 +348,7 @@ pub fn throwDart(self: *Board, bounds: rl.Rectangle, position: rl.Vector2) void 
         self.processed_darts >= MAX_DARTS) return;
 
     const angle = @as(f32, @floatFromInt(rl.getRandomValue(0, 100))) / 100.0 * std.math.pi * 2;
-    const mag = std.math.sqrt(@as(f32, @floatFromInt(rl.getRandomValue(0, 100))) / 100.0) * self.shot_stats.aim_focus;
+    const mag = std.math.sqrt(@as(f32, @floatFromInt(rl.getRandomValue(0, 100))) / 100.0) * self.shot_stats.aim_focus * bounds.width;
 
     const throw_position = rl.Vector2{
         .x = position.x + @sin(angle) * mag,
