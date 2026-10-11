@@ -1,10 +1,9 @@
 import { io } from "socket.io-client";
 
-const socket = io("http://localhost:6062", {
-  path: "",
+const socket = io("https://games.samichamberlain.com", {
+  path: "/darts-2-million/",
   transports: ["websocket"],
 });
-
 /// functions defined in main.zig (search function)
 declare function set_score(name: number): void;
 declare function set_username(name: string): void;
