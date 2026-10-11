@@ -163,7 +163,3 @@ socket.on("leaderboard:sync", ([index, name, mmr]) => {
   )
     set_leaderboard(index - leaderboard_start, name, mmr);
 });
-
-socket.on("match:end", (winner: string) => {
-  //...
-});
