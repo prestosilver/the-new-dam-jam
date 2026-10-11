@@ -14,7 +14,7 @@
         margin-left: 0;
         display: block;
       }
-      keyboardProxy {
+      #keyboardProxy {
         padding-right: 0;
         margin-left: 0;
         display: block;
@@ -48,13 +48,16 @@
         -ms-interpolation-mode: nearest-neighbor;
       }
 
-      keyboardProxy {
+      #keyboardProxy {
         image-rendering: -moz-crisp-edges;
         image-rendering: -webkit-crisp-edges;
         image-rendering: pixelated;
         image-rendering: crisp-edges;
         /* Prevent blur on resize */
         -ms-interpolation-mode: nearest-neighbor;
+        border: 0;
+        margin: 0;
+        padding: 0;
       }
 
       canvas.emscripten:focus {
@@ -100,7 +103,7 @@
     <div class="canvas-holder">
       <input
         type="text"
-         id="keyboardProxy"
+        id="keyboardProxy"
         style="position: absolute; pointer-events: none; opacity: 0.0; top: 0; left: 0; width: 100%; height: 100%;"
       ></input>
       <canvas
