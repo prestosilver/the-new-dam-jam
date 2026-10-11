@@ -36,6 +36,7 @@ const Player = union(enum) {
         upgrade_rate: i32,
     },
     user: struct {
+        sent_final: bool = false,
         send_timer: f32 = 0.0,
     },
     web: struct {
@@ -128,6 +129,11 @@ pub fn update(self: *Board, done: bool, bounds: rl.Rectangle, dt: f32) void {
         return;
 
     if (self.player == .user) {
+        if (self.processed_darts == MAX_DARTS and self.player.user.sent_final) {
+            self.dated = true;
+            self.shopSend();
+        }
+
         self.player.user.send_timer += dt;
         if (self.player.user.send_timer > 0.25) {
             self.shopSend();
