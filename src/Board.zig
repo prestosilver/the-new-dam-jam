@@ -124,10 +124,6 @@ pub fn update(self: *Board, done: bool, bounds: rl.Rectangle, dt: f32) void {
         }
     }
 
-    // darts dont throw at the end of the game
-    if (done)
-        return;
-
     if (self.player == .user) {
         if (self.processed_darts == MAX_DARTS and self.player.user.sent_final) {
             self.player.user.sent_final = true;
@@ -142,6 +138,10 @@ pub fn update(self: *Board, done: bool, bounds: rl.Rectangle, dt: f32) void {
             self.player.user.send_timer = 0;
         }
     }
+
+    // darts dont throw at the end of the game
+    if (done)
+        return;
 
     // monkey logic
     {
