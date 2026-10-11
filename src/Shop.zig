@@ -163,7 +163,7 @@ pub fn update(self: *Shop, done: bool, board: *Board, bounds: rl.Rectangle, dt: 
                     var data: WebPayload = undefined;
 
                     if (emasm.EM_ASM_INT(
-                        \\data = shop_sync();
+                        \\data = state_sync();
                         \\if (data.length < 1) return 0;
                         \\const stringData = JSON.parse(data);
                         \\const stringBytes = new Uint8Array(Object.values(stringData));

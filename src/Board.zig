@@ -343,6 +343,7 @@ pub fn draw(self: *const Board, done: bool, bounds: rl.Rectangle) void {
     );
 }
 
+//TODO: cap thrown darts
 pub fn throwDart(self: *Board, bounds: rl.Rectangle, position: rl.Vector2) void {
     if (self.thrown_darts >= MAX_DARTS or
         self.processed_darts >= MAX_DARTS) return;

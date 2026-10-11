@@ -4,6 +4,7 @@ const socket = io("https://games.samichamberlain.com", {
   path: "/darts-2-million/",
   transports: ["websocket"],
 });
+
 /// functions defined in main.zig (search function)
 declare function set_score(name: number): void;
 declare function set_username(name: string): void;
@@ -21,7 +22,7 @@ let match_found: boolean = false;
 let match_ready: boolean = false;
 
 // shop
-let opponent_shop_data: string = "";
+let opponent_state: string = "";
 
 /// Login functions
 
@@ -103,15 +104,15 @@ export function poll_ready() {
 export function shop_purchase(state: string) {
   if (!match_ready) return;
 
-  socket.emit("shop:send", state);
+  socket.emit("state:send", state);
 }
 
 // This is called by the game every once in a
 // while, it should return the current shop state
 // of the opponent if it returns an empty string
 // it means no data has been sent from the opponent
-export function shop_sync() {
-  return opponent_shop_data;
+export function state_sync() {
+  return opponent_state;
 }
 
 let leaderboard_start: number = 0;
@@ -146,16 +147,23 @@ socket.on("score:get", (score: number) => {
 });
 
 // opponent shop
-socket.on("shop:sync", (state: string) => {
-  opponent_shop_data = state;
+socket.on("state:sync", (state: string) => {
+  opponent_state = state;
 });
 
-// opponent shop
-socket.on("leaderboard:value", (index: number, name: string, mmr: number) => {
+// leaderboards
+socket.on("leaderboard:sync", ([index, name, mmr]) => {
   // if user is paging fast this will
+
+  console.log(index, name, mmr, leaderboard_start, leaderboard_count);
+
   if (
     index >= leaderboard_start &&
     index < leaderboard_start + leaderboard_count
   )
     set_leaderboard(index - leaderboard_start, name, mmr);
+});
+
+socket.on("match:end", (winner: string) => {
+  //...
 });
