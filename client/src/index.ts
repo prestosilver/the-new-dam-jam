@@ -153,9 +153,6 @@ socket.on("state:sync", (state: string) => {
 // leaderboards
 socket.on("leaderboard:sync", ([index, name, mmr]) => {
   // if user is paging fast this will
-
-  console.log(index, name, mmr, leaderboard_start, leaderboard_count);
-
   if (
     index >= leaderboard_start &&
     index < leaderboard_start + leaderboard_count

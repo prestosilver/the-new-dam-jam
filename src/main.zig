@@ -183,7 +183,10 @@ fn setState(new_state: State) void {
                 };
             }
         },
-        .end => {},
+        .end => {
+            p1_board.dated = true;
+            p1_board.shopSend();
+        },
         .leaderboard => {
             leaderboard_page = 0;
             emasm.EM_ASM("leaderboard_page($0, $1)", .{
