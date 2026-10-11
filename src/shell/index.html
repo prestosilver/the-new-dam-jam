@@ -134,8 +134,6 @@
             const stringView = new Uint8Array(wasmMemory.buffer, pointer, length);
             proxyInput.value = new TextDecoder("utf-8").decode(stringView);
             proxyInput.focus();
-            
-            console.log(proxyInput.value);
         };
         
         function hideKeyboard() {

@@ -9,6 +9,7 @@ const socket = io("https://games.samichamberlain.com", {
 declare function set_score(name: number): void;
 declare function set_username(name: string): void;
 declare function set_opponent(name: string): void;
+declare function set_error(name: string): void;
 declare function set_leaderboard(
   list_index: number,
   name: string,
@@ -46,14 +47,12 @@ export function try_login(
   socket.emit("login", { username, password }, (response: boolean) => {
     if (!response) {
       set_username("");
+      set_error("Invalid login.");
       return;
     }
 
     set_username(username!);
 
-    const date = new Date();
-    // Convert days to milliseconds
-    date.setTime(date.getTime() + 100 * 24 * 60 * 60 * 1000);
     localStorage.setItem("d2m_username", username);
     localStorage.setItem("d2m_password", password);
   });

@@ -82,6 +82,7 @@ var fmt_buf: [64]u8 = undefined;
 var user_buf: [12:0]u8 = std.mem.zeroes([12:0]u8);
 
 var opponent_buf: [12:0]u8 = std.mem.zeroes([12:0]u8);
+var error_buf: [128:0]u8 = std.mem.zeroes([128:0]u8);
 
 var name_buf: [12]u8 = undefined;
 var pass_buf: [4]u8 = "aaaa".*; // A serializable char
@@ -109,6 +110,10 @@ var leaderboard_entries: [LEADERBOARD_LEN + 1]Leaderboard.Entry = [_]Leaderboard
 var leaderboard: [LEADERBOARD_LEN + 1]Leaderboard = undefined;
 
 var level_bar: Bar = undefined;
+
+fn clearError() void {
+    error_buf[0] = 0;
+}
 
 fn login(name: ?[]const u8, password: ?[4]u8) bool {
     if (name == null or password == null) {
@@ -248,6 +253,18 @@ fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
 
             for (&password_boxes) |*box|
                 box.draw();
+
+            rl.drawTextEx(
+                util.font,
+                &error_buf,
+                .{
+                    .x = 0,
+                    .y = 0,
+                },
+                66,
+                0,
+                .red,
+            );
         },
         .lobby => {
             // play button
@@ -623,7 +640,7 @@ pub fn main(_: std.process.Init) !void {
     // set_username function
     emasm.EM_ASM(
         \\set_username = function (name) {
-        \\    if (name.length > 12) throw new Error("opponent name " + name + " is too long for set_leaderboard");
+        \\    if (name.length > 12) throw new Error("opponent name " + name + " is too long for set_username");
         \\    const tmp_name = name + "\0";
         \\    const encoder = new TextEncoder();
         \\    const stringBytes = encoder.encode(tmp_name);
@@ -637,7 +654,7 @@ pub fn main(_: std.process.Init) !void {
     // set_opponent function
     emasm.EM_ASM(
         \\set_opponent = function (name) {
-        \\    if (name.length > 12) throw new Error("opponent name " + name + " is too long for set_leaderboard");
+        \\    if (name.length > 12) throw new Error("opponent name " + name + " is too long for set_opponent");
         \\    const tmp_name = name + "\0";
         \\    const encoder = new TextEncoder();
         \\    const stringBytes = encoder.encode(tmp_name);
@@ -656,6 +673,20 @@ pub fn main(_: std.process.Init) !void {
         \\}
     , .{
         @intFromPtr(&mmr_value), // $0
+    });
+
+    // set_error function
+    emasm.EM_ASM(
+        \\set_error = function (err) {
+        \\    if (err.length > 128) throw new Error("Error" + err + " is too long for set_error");
+        \\    const tmp_name = err + "\0";
+        \\    const encoder = new TextEncoder();
+        \\    const stringBytes = encoder.encode(tmp_name);
+        \\    const entryBytes = new Uint8Array(wasmMemory.buffer, $0, stringBytes.length);
+        \\    entryBytes.set(stringBytes);
+        \\}
+    , .{
+        @intFromPtr(&error_buf), // $0
     });
 
     _ = login(null, null);
