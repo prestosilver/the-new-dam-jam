@@ -51,9 +51,6 @@ export function try_login(
 
     set_username(username!);
 
-    const date = new Date();
-    // Convert days to milliseconds
-    date.setTime(date.getTime() + 100 * 24 * 60 * 60 * 1000);
     localStorage.setItem("d2m_username", username);
     localStorage.setItem("d2m_password", password);
   });
