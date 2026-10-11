@@ -651,7 +651,6 @@ pub fn main(_: std.process.Init) !void {
     // set_score function
     emasm.EM_ASM(
         \\set_score = function (score) {
-        \\    if (score == -1) return;
         \\    const view = new DataView(wasmMemory.buffer);
         \\    view.setInt32($0, score, true); 
         \\}

@@ -1,16 +1,19 @@
-import {io} from "socket.io-client";
+import { io } from "socket.io-client";
 
-const socket = io("https://games.samichamberlain.com", {
-  path : "/darts-2-million/",
-  transports : [ "websocket" ],
+const socket = io("http://localhost:6062", {
+  path: "",
+  transports: ["websocket"],
 });
 
 /// functions defined in main.zig (search function)
 declare function set_score(name: number): void;
 declare function set_username(name: string): void;
 declare function set_opponent(name: string): void;
-declare function set_leaderboard(list_index: number, name: string,
-                                 mmr: number): void;
+declare function set_leaderboard(
+  list_index: number,
+  name: string,
+  mmr: number,
+): void;
 declare function unset_leaderboard(list_index: number): void;
 
 /// Global state
@@ -29,25 +32,28 @@ let opponent_shop_data: string = "";
 // returns the username of the logged in player, or null
 // on failure to login
 export function try_login(
-    username: string|null,
-    password: string|null,
-    ): boolean {
-
+  username: string | null,
+  password: string | null,
+): boolean {
   if (username == null || username.length == 0) {
     username = localStorage.getItem("d2m_username");
     password = localStorage.getItem("d2m_password");
   }
 
-  if (username == null || password == null) 
-      return false;
+  if (username == null || password == null) return false;
 
   set_username("");
-  socket.emit("login", {username, password}, (response: boolean) => {
+  socket.emit("login", { username, password }, (response: boolean) => {
+    if (!response) {
+      set_username("");
+      return;
+    }
+
     set_username(username!);
 
     const date = new Date();
     // Convert days to milliseconds
-    date.setTime(date.getTime() + (100 * 24 * 60 * 60 * 1000));
+    date.setTime(date.getTime() + 100 * 24 * 60 * 60 * 1000);
     localStorage.setItem("d2m_username", username);
     localStorage.setItem("d2m_password", password);
   });
@@ -75,23 +81,28 @@ export function cancel_match() {
 
 // player confirmation, should be proceeded by
 // poll_ready eventually returning true
-export function ready_match() { socket.emit("match:ready"); }
+export function ready_match() {
+  socket.emit("match:ready");
+}
 
 // This is called while waiting for a match
 // If a match has been found it returns true
-export function poll_match() { return match_found; }
+export function poll_match() {
+  return match_found;
+}
 
 // This is called while waiting for the opponent
 // to confirm, if they have confirmed it returns
 // true
-export function poll_ready() { return match_ready; }
+export function poll_ready() {
+  return match_ready;
+}
 
 /// Gameplay functions
 // This is called by the game when a shop purchase
 // is made it transmits things in a string value
 export function shop_purchase(state: string) {
-  if (!match_ready)
-    return;
+  if (!match_ready) return;
 
   socket.emit("shop:send", state);
 }
@@ -100,7 +111,9 @@ export function shop_purchase(state: string) {
 // while, it should return the current shop state
 // of the opponent if it returns an empty string
 // it means no data has been sent from the opponent
-export function shop_sync() { return opponent_shop_data; }
+export function shop_sync() {
+  return opponent_shop_data;
+}
 
 let leaderboard_start: number = 0;
 let leaderboard_count: number = 0;
@@ -109,47 +122,41 @@ let leaderboard_count: number = 0;
 export function leaderboard_page(start: number, count: number) {
   leaderboard_start = start;
   leaderboard_count = count;
-  for (let i = 0; i < count; i++)
-    unset_leaderboard(i);
-  socket.emit("leaderboard:request", {start, count});
-
-  // for (let i = 0; i < count; i++) {
-  //   function getRandomTime(min: number, max: number): number {
-  //     return Math.floor(Math.random() * (max - min + 1)) + min;
-  //   }
-  //
-  //   const delay = getRandomTime(0, 300);
-  //   const mmr = (i + start) * 1000;
-  //   const index = start + i;
-
-  //   if (index < 37)
-  //     setTimeout(() => {
-  //       if (index >= leaderboard_start && index < leaderboard_start +
-  //       leaderboard_count)
-  //         set_leaderboard(index - leaderboard_start, "test", mmr);
-  //     }, delay);
-  // }
+  for (let i = 0; i < count; i++) unset_leaderboard(i);
+  socket.emit("leaderboard:request", { start, count });
 }
 
 // Socket Listeners -- server responses are in args
 
 // Matchmaking
-socket.on("match:found", () => { match_found = true; });
+socket.on("match:found", () => {
+  match_found = true;
+});
 
-socket.on("match:start", () => { match_ready = true; });
+socket.on("match:start", () => {
+  match_ready = true;
+});
 
-socket.on("opponent:get", (name: string) => { set_opponent(name); });
+socket.on("opponent:get", (name: string) => {
+  set_opponent(name);
+});
 
 // Score
-socket.on("score:get", (score: number) => { set_score(score); });
+socket.on("score:get", (score: number) => {
+  set_score(score);
+});
 
 // opponent shop
-socket.on("shop:sync", (state: string) => { opponent_shop_data = state; });
+socket.on("shop:sync", (state: string) => {
+  opponent_shop_data = state;
+});
 
 // opponent shop
 socket.on("leaderboard:value", (index: number, name: string, mmr: number) => {
   // if user is paging fast this will
-  if (index >= leaderboard_start &&
-      index < leaderboard_start + leaderboard_count)
+  if (
+    index >= leaderboard_start &&
+    index < leaderboard_start + leaderboard_count
+  )
     set_leaderboard(index - leaderboard_start, name, mmr);
 });
