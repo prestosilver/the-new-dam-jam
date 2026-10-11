@@ -130,6 +130,7 @@ pub fn update(self: *Board, done: bool, bounds: rl.Rectangle, dt: f32) void {
 
     if (self.player == .user) {
         if (self.processed_darts == MAX_DARTS and self.player.user.sent_final) {
+            self.player.user.sent_final = true;
             self.dated = true;
             self.shopSend();
         }
