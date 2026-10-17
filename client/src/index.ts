@@ -1,14 +1,14 @@
 import { io } from "socket.io-client";
 
-const socket = io("http://localhost:6062", {
-  path: "",
-  transports: ["websocket"],
-});
-
-// const socket = io("https://games.samichamberlain.com", {
-//   path: "/darts-2-million/",
+// const socket = io("http://localhost:6062", {
+//   path: "",
 //   transports: ["websocket"],
 // });
+
+const socket = io("https://games.samichamberlain.com", {
+  path: "/darts-2-million/",
+  transports: ["websocket"],
+});
 
 /// functions defined in main.zig (search function)
 declare function set_score(name: number): void;
