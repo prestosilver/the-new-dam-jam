@@ -183,7 +183,10 @@ fn setState(new_state: State) void {
                 };
             }
         },
-        .end => {},
+        .end => {
+            p1_board.dated = true;
+            p1_board.shopSend();
+        },
         .leaderboard => {
             leaderboard_page = 0;
             emasm.EM_ASM("leaderboard_page($0, $1)", .{
@@ -787,15 +790,15 @@ pub fn main(_: std.process.Init) !void {
                             setState(.end);
                     }
 
+                    if (debug_web) {
+                        if (rl.isKeyPressed(.e))
+                            p1_board.processed_darts = Board.MAX_DARTS;
+                    }
+
                     if (game_begin > 0) {
                         game_begin -= dt;
 
                         break :update;
-                    }
-
-                    if (debug_web) {
-                        if (rl.isKeyPressed(.e))
-                            p1_board.processed_darts = Board.MAX_DARTS;
                     }
 
                     p1_board.update(game_done, p1_bounds, dt);
