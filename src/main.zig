@@ -113,6 +113,8 @@ var level_bar: Bar = undefined;
 
 var title_texture: rl.Texture = undefined;
 
+var music: rl.Music = undefined;
+
 fn clearError() void {
     error_buf[0] = 0;
 }
@@ -504,6 +506,8 @@ pub fn main(_: std.process.Init) !void {
 
     Button.button_sound = try rl.loadSound("button.wav");
     defer Button.button_sound.unload();
+    music = try rl.loadMusicStream("match.ogg");
+    defer music.unload();
 
     const board_width = (build_options.SCREEN_WIDTH - SHOP_WIDTH);
     p1_bounds = rl.Rectangle{
@@ -738,6 +742,8 @@ pub fn main(_: std.process.Init) !void {
 
     _ = login(null, null);
 
+    rl.playMusicStream(music);
+
     while (!rl.windowShouldClose()) {
         const dt = rl.getFrameTime();
         transition_timer += dt * 4.0;
@@ -745,6 +751,17 @@ pub fn main(_: std.process.Init) !void {
 
         const game_done = p1_board.processed_darts == Board.MAX_DARTS or
             p2_board.processed_darts == Board.MAX_DARTS;
+
+        rl.updateMusicStream(music);
+
+        rl.setMusicVolume(music, switch (state) {
+            .loading => 0.0,
+            .login => 0.0,
+            .lobby => 0.0,
+            .game => 1.0,
+            .end => 0.5,
+            .leaderboard => 0.0,
+        });
 
         update: {
             // update state
