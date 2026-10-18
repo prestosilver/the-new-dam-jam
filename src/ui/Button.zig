@@ -18,6 +18,9 @@ state: packed struct {
 bounds: rl.Rectangle,
 text_size: f32,
 
+pub var button_sound: rl.Sound = undefined;
+pub var button_sound_volume: f32 = 0.5;
+
 const Button = @This();
 
 pub fn update(self: *Button) void {
@@ -34,8 +37,10 @@ pub fn update(self: *Button) void {
     }
 
     if (rl.isMouseButtonReleased(.left)) {
-        if (self.state.focused and self.state.clicked)
+        if (self.state.focused and self.state.clicked) {
             self.state.pressed = true;
+            play_button_sound();
+        }
 
         self.state.clicked = false;
     }
@@ -46,6 +51,12 @@ pub fn update(self: *Button) void {
 
 pub fn isPressed(self: *const Button) bool {
     return self.state.pressed;
+}
+
+pub fn play_button_sound() void {
+    rl.setSoundPitch(button_sound, @as(f32, @floatFromInt(rl.getRandomValue(80, 120))) / 100);
+    rl.setSoundVolume(button_sound, button_sound_volume);
+    rl.playSound(button_sound);
 }
 
 pub fn draw(self: *const Button, text: [:0]const u8) void {
