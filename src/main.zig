@@ -757,10 +757,10 @@ pub fn main(_: std.process.Init) !void {
         rl.setMusicVolume(music, switch (state) {
             .loading => 0.0,
             .login => 0.0,
-            .lobby => 0.25,
-            .game => 1.0,
-            .end => 0.5,
-            .leaderboard => 0.25,
+            .lobby => 0.05,
+            .game => 0.1,
+            .end => 0.05,
+            .leaderboard => 0.05,
         });
 
         update: {
