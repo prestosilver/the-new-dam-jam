@@ -311,10 +311,12 @@ fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
                 .white,
             );
 
+            const rank_text = util.getRank(mmr_value);
+
             const practice_text = if (practice_mode) "Practice" else "PVP";
             practice_button.draw(practice_text);
             leaderboard_button.draw("Leaders");
-            level_bar.draw();
+            level_bar.draw(rank_text);
 
             if (!debug_text) return;
 
@@ -352,7 +354,6 @@ fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
             rl.drawText(user_state_text, 0, y, 22, .white);
             y += 22;
 
-            const rank_text = util.getRank(mmr_value);
             const mmr_text = std.fmt.bufPrintSentinel(
                 &fmt_buf,
                 "score r: {s} v: {d} x: {d}",
@@ -448,8 +449,10 @@ fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
             }
         },
         .end => {
+            const rank_text = util.getRank(mmr_value);
+
             continue_button.draw("Return");
-            level_bar.draw();
+            level_bar.draw(rank_text);
         },
         .leaderboard => {
             for (leaderboard[0 .. leaderboard.len - 1]) |entry|
