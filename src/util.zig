@@ -2,7 +2,7 @@ const std = @import("std");
 const rl = @import("raylib");
 
 pub const RANK_STEP = 200;
-const RANKS = [_][:0]const u8{ "F", "D-", "D", "D+", "C-", "C", "C+", "B-", "B", "B+", "A-", "A", "A+", "A++", "S-", "S", "S+", "SS", "SS+", "SSS" };
+const RANKS = [_][:0]const u8{ "F", "D-", "D", "D+", "C-", "C", "C+", "C++", "B-", "B", "B+", "A-", "A", "A+", "A++", "S-", "S", "S+", "SS", "SS+", "SSS" };
 
 var rank_buf: [32]u8 = undefined;
 

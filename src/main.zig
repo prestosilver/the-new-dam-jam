@@ -179,7 +179,7 @@ fn setState(new_state: State) void {
                         .upgrade_rate = 1,
                     } },
                     .font_size = 25,
-                    .name = "Albert Bot",
+                    .name = "Al-bot-o",
                     .board_volume = 0,
                 };
             } else {

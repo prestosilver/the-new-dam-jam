@@ -120,6 +120,11 @@ pub const WebPayload = extern struct {
     },
 };
 
+comptime {
+    if (@offsetOf(WebPayload, "processed_darts") != 4)
+        @compileError("process_darts moved, offset should be 4");
+}
+
 pub fn update(self: *Shop, done: bool, board: *Board, bounds: rl.Rectangle, dt: f32) void {
     _ = bounds;
 

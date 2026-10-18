@@ -175,6 +175,7 @@ export function poll_bot_match() {
 
 export function bot_start() {
   socket.emit("bot:start", {});
+  bot_avail = false;
 }
 
 export function bot_status(win: number) {
