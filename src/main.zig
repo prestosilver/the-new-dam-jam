@@ -67,8 +67,8 @@ var transition_timer: f32 = 0.0;
 // The lobbys state
 var lobby_state: enum { lobby, ready, bot_matched, matched, waiting } = .lobby;
 
-var p1_board: Board = .{ .name = "" };
-var p2_board: Board = .{ .name = "" };
+var p1_board: Board = .{ .name = "", .board_volume = 0.8 };
+var p2_board: Board = .{ .name = "", .board_volume = 0 };
 
 var shop: Shop = .{};
 var mmr_value: u32 = 0;
@@ -170,6 +170,7 @@ fn setState(new_state: State) void {
                 .player = .{ .user = .{} },
                 .font_size = 66,
                 .name = std.mem.span(@as([*:0]const u8, &user_buf)),
+                .board_volume = 0.8,
             };
             if (practice_mode) {
                 p2_board = .{
@@ -179,12 +180,14 @@ fn setState(new_state: State) void {
                     } },
                     .font_size = 25,
                     .name = "Albert Bot",
+                    .board_volume = 0,
                 };
             } else {
                 p2_board = .{
                     .player = .{ .web = .{} },
                     .font_size = 25,
                     .name = std.mem.span(@as([*:0]const u8, &opponent_buf)),
+                    .board_volume = 0,
                 };
             }
         },
@@ -501,6 +504,8 @@ pub fn main(_: std.process.Init) !void {
     title_texture = try .init("logo-ingame.png");
     defer title_texture.unload();
 
+    Button.button_sound = try rl.loadSound("button.wav");
+    defer Button.button_sound.unload();
     music = try rl.loadMusicStream("match.ogg");
     defer music.unload();
 

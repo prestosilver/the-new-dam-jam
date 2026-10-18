@@ -77,14 +77,17 @@ dart_fades: [MAX_DARTS]f32 = undefined,
 upgrade_counts: std.enums.EnumArray(Shop.Upgrade, u32) = .initFill(0),
 
 name: [:0]const u8,
-
+board_volume: f32,
 const DART_FALL_SPEED = 500;
 
 const Board = @This();
 
 pub var dart_sound: rl.Sound = undefined;
+pub var play_sound: bool = true;
 
 pub fn update(self: *Board, done: bool, bounds: rl.Rectangle, dt: f32) void {
+    play_sound = true;
+
     const mouse_pos = rl.getMousePosition();
 
     // dart logic
@@ -427,7 +430,10 @@ pub fn throwDart(self: *Board, bounds: rl.Rectangle, position: rl.Vector2) void 
     self.thrown_darts += 1;
     self.processed_darts += 1;
 
-    play_dart_sound();
+    if (play_sound and self.board_volume > 0) {
+        play_dart_sound(self);
+        play_sound = false;
+    }
 }
 
 pub fn buyUpgrade(self: *Board, upgrade: Shop.Upgrade) void {
@@ -451,8 +457,9 @@ pub fn buyUpgrade(self: *Board, upgrade: Shop.Upgrade) void {
     }
 }
 
-pub fn play_dart_sound() void {
+pub fn play_dart_sound(self: *Board) void {
     rl.setSoundPitch(dart_sound, @as(f32, @floatFromInt(rl.getRandomValue(0, 100))) / 100);
+    rl.setSoundVolume(dart_sound, self.board_volume);
     rl.playSound(dart_sound);
 }
 
