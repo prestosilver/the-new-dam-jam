@@ -65,7 +65,7 @@ const debug_web: bool = @import("builtin").mode == .Debug;
 var transition_timer: f32 = 0.0;
 
 // The lobbys state
-var lobby_state: enum { lobby, ready, matched, waiting } = .lobby;
+var lobby_state: enum { lobby, ready, bot_matched, matched, waiting } = .lobby;
 
 var p1_board: Board = .{ .name = "" };
 var p2_board: Board = .{ .name = "" };
@@ -184,7 +184,13 @@ fn setState(new_state: State) void {
                 };
             }
         },
-        .end => {},
+        .end => {
+            if (p2_board.player == .ai) {
+                emasm.EM_ASM("bot_status($0)", .{
+                    p1_board.processed_darts == Board.MAX_DARTS,
+                });
+            }
+        },
         .leaderboard => {
             leaderboard_page = 0;
             emasm.EM_ASM("leaderboard_page($0, $1)", .{
@@ -213,6 +219,12 @@ fn playClick() void {
             lobby_state = .lobby;
             // cancel match
             emasm.EM_ASM("cancel_match()", .{});
+        },
+        .bot_matched => {
+            emasm.EM_ASM("bot_start()", .{});
+            practice_mode = true;
+            setState(.game);
+            practice_mode = false;
         },
         .matched => {
             lobby_state = .waiting;
@@ -276,6 +288,7 @@ fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
                 .lobby => "Ready",
                 .ready => "Cancel",
                 .matched => "Begin",
+                .bot_matched => "Begin",
                 .waiting => "Waiting",
             };
             play_button.draw(play_text);
@@ -749,6 +762,10 @@ pub fn main(_: std.process.Init) !void {
                         poll_timer += dt;
 
                         if (poll_timer > POLL_INTERVAL) {
+                            if (lobby_state == .ready and
+                                emasm.EM_ASM_INT("return poll_bot_match();", .{}) == 1)
+                                lobby_state = .bot_matched;
+
                             if (lobby_state == .ready and
                                 emasm.EM_ASM_INT("return poll_match();", .{}) == 1)
                                 lobby_state = .matched;

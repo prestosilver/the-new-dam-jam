@@ -21,11 +21,13 @@ declare function set_leaderboard(
   mmr: number,
 ): void;
 declare function unset_leaderboard(list_index: number): void;
+declare function bot_match(): void;
 
 /// Global state
 // matchmaking
 let match_found: boolean = false;
 let match_ready: boolean = false;
+let bot_avail: boolean = false;
 
 // shop
 let opponent_state: string = "";
@@ -72,6 +74,7 @@ export function try_login(
 export function join_match() {
   match_found = false;
   match_ready = false;
+  bot_avail = false;
   socket.emit("queue:join");
 }
 
@@ -80,6 +83,7 @@ export function join_match() {
 export function cancel_match() {
   match_found = false;
   match_ready = false;
+  bot_avail = false;
   socket.emit("match:cancel");
 }
 
@@ -162,10 +166,20 @@ socket.on("offer:bot", () => {
   // offer:bot -> player presses button to confirm -> game starts
   // -> Game ends -> call "bot:gameover"
   //tbh this system is backwards, optimally we enforce alot of this on the server. Maybe next time.
+  bot_avail = true;
 });
 
-//socket.emit("bot:gameover")
-// Accepts object {win: bool, botMmr: number}
+export function poll_bot_match() {
+  return bot_avail;
+}
+
+export function bot_start() {
+  socket.emit("bot:start", {});
+}
+
+export function bot_status(win: number) {
+  socket.emit("bot:gameover", {win: win != 0, botMmr: 1000});
+}
 
 // leaderboards
 socket.on("leaderboard:sync", ([index, name, mmr]) => {
