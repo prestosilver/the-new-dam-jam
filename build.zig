@@ -70,9 +70,13 @@ pub fn build(b: *std.Build) !void {
         });
         b.getInstallStep().dependOn(emcc_step);
 
-        const npm_init_build_step = b.addSystemCommand(&.{ "npm", "--prefix", "client", "i" });
+        const npm_prefix_path = b.path("client");
 
-        const npm_client_js_build_step = b.addSystemCommand(&.{ "npm", "--prefix", "client", "run", "build" });
+        const npm_init_build_step = b.addSystemCommand(&.{ "npm", "i", "--prefix" });
+        npm_init_build_step.addFileArg(npm_prefix_path);
+
+        const npm_client_js_build_step = b.addSystemCommand(&.{ "npm", "run", "build", "--prefix" });
+        npm_client_js_build_step.addFileArg(npm_prefix_path);
 
         const client_js_step = b.addInstallFile(b.path("client/dist/index.js"), "web/client.js");
 
