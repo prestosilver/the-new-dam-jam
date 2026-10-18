@@ -47,7 +47,7 @@ pub fn update(self: *Bar, dt: f32) void {
     }
 }
 
-pub fn draw(self: *const Bar) void {
+pub fn draw(self: *const Bar, rank_text: []const u8) void {
     const fill_pc = @rem(self.value / self.step, 1.0);
 
     rl.drawRectangleRec(self.bounds, BACKGROUND_COLOR);
@@ -61,8 +61,8 @@ pub fn draw(self: *const Bar) void {
     var fmt_buf: [64]u8 = undefined;
     const text = std.fmt.bufPrintSentinel(
         &fmt_buf,
-        "{}%",
-        .{@as(i32, @intFromFloat(fill_pc * 100))},
+        "{s} rank",
+        .{rank_text},
         0,
     ) catch unreachable;
     rl.drawTextEx(
@@ -70,6 +70,30 @@ pub fn draw(self: *const Bar) void {
         text,
         .{
             .x = self.bounds.x + 5,
+            .y = self.bounds.y,
+        },
+        self.bounds.height,
+        0,
+        TEXT_COLOR,
+    );
+
+    const pc_text = std.fmt.bufPrintSentinel(
+        &fmt_buf,
+        "{}%",
+        .{@as(i32, @intFromFloat(fill_pc * 100))},
+        0,
+    ) catch unreachable;
+    const pc_width = rl.measureTextEx(
+        util.font,
+        pc_text,
+        self.bounds.height,
+        0,
+    ).x;
+    rl.drawTextEx(
+        util.font,
+        pc_text,
+        .{
+            .x = self.bounds.x + self.bounds.width - (5 + pc_width),
             .y = self.bounds.y,
         },
         self.bounds.height,

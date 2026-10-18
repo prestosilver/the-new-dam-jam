@@ -111,6 +111,8 @@ var leaderboard: [LEADERBOARD_LEN + 1]Leaderboard = undefined;
 
 var level_bar: Bar = undefined;
 
+var title_texture: rl.Texture = undefined;
+
 fn clearError() void {
     error_buf[0] = 0;
 }
@@ -258,6 +260,8 @@ fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
         rl.drawText(state_text, 0, y, 22, .white);
     };
 
+    Board.background_texture.draw(0, 0, .white);
+
     switch (draw_state) {
         .loading => {},
         .login => {
@@ -281,6 +285,7 @@ fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
         },
         .lobby => {
             // play button
+
             leaderboard_button.state.disabled = lobby_state != .lobby;
             practice_button.state.disabled = lobby_state != .lobby;
             play_button.state.disabled = lobby_state == .waiting;
@@ -293,10 +298,25 @@ fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
             };
             play_button.draw(play_text);
 
+            const x = @as(f32, @floatFromInt(build_options.SCREEN_WIDTH - title_texture.width)) / 2.0;
+
+            title_texture.drawRec(
+                .{
+                    .x = 0,
+                    .y = 0,
+                    .width = @floatFromInt(title_texture.width),
+                    .height = @floatFromInt(title_texture.height),
+                },
+                .{ .x = x, .y = 25 },
+                .white,
+            );
+
+            const rank_text = util.getRank(mmr_value);
+
             const practice_text = if (practice_mode) "Practice" else "PVP";
             practice_button.draw(practice_text);
             leaderboard_button.draw("Leaders");
-            level_bar.draw();
+            level_bar.draw(rank_text);
 
             if (!debug_text) return;
 
@@ -334,7 +354,6 @@ fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
             rl.drawText(user_state_text, 0, y, 22, .white);
             y += 22;
 
-            const rank_text = util.getRank(mmr_value);
             const mmr_text = std.fmt.bufPrintSentinel(
                 &fmt_buf,
                 "score r: {s} v: {d} x: {d}",
@@ -430,8 +449,10 @@ fn draw(draw_state: State, game_done: bool, offset: rl.Vector2) void {
             }
         },
         .end => {
+            const rank_text = util.getRank(mmr_value);
+
             continue_button.draw("Return");
-            level_bar.draw();
+            level_bar.draw(rank_text);
         },
         .leaderboard => {
             for (leaderboard[0 .. leaderboard.len - 1]) |entry|
@@ -474,6 +495,9 @@ pub fn main(_: std.process.Init) !void {
 
     Board.dart_sound = try rl.loadSound("dart.wav");
     defer Board.dart_sound.unload();
+    
+    title_texture = try .init("logo-ingame.png");
+    defer title_texture.unload();
 
     const board_width = (build_options.SCREEN_WIDTH - SHOP_WIDTH);
     p1_bounds = rl.Rectangle{
