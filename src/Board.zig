@@ -82,6 +82,8 @@ const DART_FALL_SPEED = 500;
 
 const Board = @This();
 
+pub var dart_sound: rl.Sound = undefined;
+
 pub fn update(self: *Board, done: bool, bounds: rl.Rectangle, dt: f32) void {
     const mouse_pos = rl.getMousePosition();
 
@@ -424,6 +426,8 @@ pub fn throwDart(self: *Board, bounds: rl.Rectangle, position: rl.Vector2) void 
     self.dart_velocities[self.thrown_darts] = .{ .x = 0, .y = 0 };
     self.thrown_darts += 1;
     self.processed_darts += 1;
+
+    play_dart_sound();
 }
 
 pub fn buyUpgrade(self: *Board, upgrade: Shop.Upgrade) void {
@@ -445,6 +449,11 @@ pub fn buyUpgrade(self: *Board, upgrade: Shop.Upgrade) void {
             self.monkey_stats.darts_per_shot += 1;
         },
     }
+}
+
+pub fn play_dart_sound() void {
+    rl.setSoundPitch(dart_sound, @as(f32, @floatFromInt(rl.getRandomValue(0, 100))) / 100);
+    rl.playSound(dart_sound);
 }
 
 var web_idx: usize = 0;

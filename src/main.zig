@@ -472,6 +472,9 @@ pub fn main(_: std.process.Init) !void {
     Board.background_texture = try .init("background.png");
     defer Board.background_texture.unload();
 
+    Board.dart_sound = try rl.loadSound("dart.wav");
+    defer Board.dart_sound.unload();
+
     const board_width = (build_options.SCREEN_WIDTH - SHOP_WIDTH);
     p1_bounds = rl.Rectangle{
         .x = 0,

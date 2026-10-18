@@ -64,8 +64,11 @@ pub fn build(b: *std.Build) !void {
                 // .{ .src_path = "assets/name_arrow.png", .virtual_path = "name_arrow.png" },
                 .{ .src_path = "assets/background.png", .virtual_path = "background.png" },
 
-                // .{ .src_path = "assets/concrete.wav", .virtual_path = "concrete.wav" },
-                // .{ .src_path = "assets/dart.wav", .virtual_path = "dart.wav" },
+                .{ .src_path = "assets/concrete.wav", .virtual_path = "concrete.wav" },
+                .{ .src_path = "assets/dart.wav", .virtual_path = "dart.wav" },
+                .{ .src_path = "assets/button.wav", .virtual_path = "button.wav" },
+
+                .{ .src_path = "assets/match.ogg", .virtual_path = "match.ogg" },
             },
         });
         b.getInstallStep().dependOn(emcc_step);
@@ -120,6 +123,12 @@ pub fn build(b: *std.Build) !void {
 
         const dart_step = b.addInstallFile(b.path("assets/dart.wav"), "bin/dart.wav");
         b.getInstallStep().dependOn(&dart_step.step);
+
+        const button_step = b.addInstallFile(b.path("assets/button.wav"), "bin/button.wav");
+        b.getInstallStep().dependOn(&button_step.step);
+
+        const match_step = b.addInstallFile(b.path("assets/match.ogg"), "bin/match.ogg");
+        b.getInstallStep().dependOn(&match_step.step);
 
         const run_cmd = b.addRunArtifact(exe);
         run_cmd.cwd = b.path("zig-out/bin");
