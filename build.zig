@@ -63,6 +63,7 @@ pub fn build(b: *std.Build) !void {
                 // .{ .src_path = "assets/dart_shadow.png", .virtual_path = "dart_shadow.png" },
                 // .{ .src_path = "assets/name_arrow.png", .virtual_path = "name_arrow.png" },
                 .{ .src_path = "assets/background.png", .virtual_path = "background.png" },
+                .{ .src_path = "assets/logo-ingame.png", .virtual_path = "logo-ingame.png" },
 
                 // .{ .src_path = "assets/concrete.wav", .virtual_path = "concrete.wav" },
                 // .{ .src_path = "assets/dart.wav", .virtual_path = "dart.wav" },
