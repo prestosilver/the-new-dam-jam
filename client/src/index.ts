@@ -1,14 +1,14 @@
 import { io } from "socket.io-client";
 
-// const socket = io("http://localhost:6062", {
-//   path: "",
-//   transports: ["websocket"],
-// });
-
-const socket = io("https://games.samichamberlain.com", {
-  path: "/darts-2-million/",
+const socket = io("http://localhost:6062", {
+  path: "",
   transports: ["websocket"],
 });
+
+// const socket = io("https://games.samichamberlain.com", {
+//   path: "/darts-2-million/",
+//   transports: ["websocket"],
+// });
 
 /// functions defined in main.zig (search function)
 declare function set_score(name: number): void;
@@ -134,6 +134,7 @@ export function leaderboard_page(start: number, count: number) {
 
 // Matchmaking
 socket.on("match:found", () => {
+  console.log("Found match!");
   match_found = true;
 });
 
@@ -154,6 +155,17 @@ socket.on("score:get", (score: number) => {
 socket.on("state:sync", (state: string) => {
   opponent_state = state;
 });
+
+socket.on("offer:bot", () => {
+  //....
+  //Server offers bot after 15 seconds of waiting in lobby
+  // offer:bot -> player presses button to confirm -> game starts
+  // -> Game ends -> call "bot:gameover"
+  //tbh this system is backwards, optimally we enforce alot of this on the server. Maybe next time.
+});
+
+//socket.emit("bot:gameover")
+// Accepts object {win: bool, botMmr: number}
 
 // leaderboards
 socket.on("leaderboard:sync", ([index, name, mmr]) => {
